@@ -1,0 +1,9 @@
+name: raman-mda-engine-dev
+channels:
+  - defaults
+dependencies:
+  - pandoc
+  - pip
+  - python
+  - pip:
+      - -e .[dev]
