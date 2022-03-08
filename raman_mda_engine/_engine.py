@@ -24,6 +24,16 @@ class RamanEngine(MDAEngine):
             The sequence of events to run.
         """
         self._prepare_to_run(sequence)
+        raman_meta = sequence.metadata["raman"]
+        channel = raman_meta.get("channel", "BF")
+        z = raman_meta.get("z", "center")
+        z_index = sequence.axis_order.index('z')
+        if z == 'center':
+            n_z = sequence.shape[z_index]
+            if n_z % 2 == 0:
+                raise ValueError("for z=center n_z must be odd.")
+            z = n_z //2 
+
 
         for event in sequence:
             cancelled = self._wait_until_event(event, sequence)
@@ -34,8 +44,8 @@ class RamanEngine(MDAEngine):
 
             logger.info(event)
             self._prep_hardware(event)
-            if event.channel.config == 'BF':
-                logger.debug("bf event!!")
+            if event.channel.config == channel and event.index['z'] == z:
+                logger.debug("raman time!")
 
             self._mmc.snapImage()
             img = self._mmc.getImage()
