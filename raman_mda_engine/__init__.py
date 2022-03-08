@@ -9,4 +9,7 @@ __all__ = [
     "__version__",
     "__author__",
     "__email__",
+    "RamanEngine"
 ]
+
+from ._engine import RamanEngine
