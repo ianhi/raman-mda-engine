@@ -106,3 +106,5 @@ ENV/
 
 
 _version.py
+
+examples/data
