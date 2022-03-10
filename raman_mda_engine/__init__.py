@@ -9,7 +9,8 @@ __all__ = [
     "__version__",
     "__author__",
     "__email__",
-    "RamanEngine"
+    "RamanEngine",
+    "RamanTiffAndNumpyWriter",
 ]
 
-from ._engine import RamanEngine
+from ._engine import RamanEngine, RamanTiffAndNumpyWriter
