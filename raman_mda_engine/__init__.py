@@ -13,4 +13,5 @@ __all__ = [
     "RamanTiffAndNumpyWriter",
 ]
 
-from ._engine import RamanEngine, RamanTiffAndNumpyWriter
+from ._engine import RamanEngine
+from ._writers import RamanTiffAndNumpyWriter

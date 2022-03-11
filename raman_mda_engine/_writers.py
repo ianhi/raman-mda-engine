@@ -4,10 +4,10 @@ from pathlib import Path
 from pymmcore_mda_writers import SimpleMultiFileTiffWriter
 import numpy as np
 
+from napari.layers import Points
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from napari.layers import Points
     from raman_mda_engine import RamanEngine
     from pymmcore_plus.mda import PMDAEngine
     from typing import Union, List
@@ -15,9 +15,19 @@ if TYPE_CHECKING:
     from useq import MDASequence
 
 __all__ = [
+    "fakeAcquirer",
     "RamanTiffAndNumpyWriter",
 ]
 
+
+class fakeAcquirer:
+    """
+    For development
+    """
+    def collect_spectra(self, points, exposure=20):
+        assert points.shape[0] == 2
+        arr = np.random.randn(points.shape[1], 1340)*exposure
+        return np.cumsum(arr, axis=1)
 
 class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
     """
@@ -30,6 +40,7 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
         save_dir: Union[str, Path],
         points_layers: List[Points],
         core: CMMCorePlus = None,
+        spectra_collector = None
     ):
         if not isinstance(points_layers, list):
             points_layers = list(points_layers)
@@ -41,6 +52,10 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
 
         # BaseWriter.get_unique_folder(self._save_dir, create=True)
         self._points_layers = points_layers
+        self._spectra_collector = spectra_collector
+        if self._spectra_collector is None:
+            from raman_control import SpectraCollector
+            self._spectra_collector = SpectraCollector.instance()
 
     def _on_mda_engine_registered(self, newEngine: PMDAEngine, oldEngine: PMDAEngine):
         super()._on_mda_engine_registered(newEngine, oldEngine)
@@ -53,36 +68,12 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
     def _get_pos_points(points: np.ndarray, pos: int):
         return points[points[:, 0] == pos][:, -2:]
 
-    def acquire(self, points: np.ndarray, exposure: int, filter_wait: int = 3000):
-        """
-        Actually acquire the raman images by interacting with laser
-
-        MUST OVERRIDE for actual usage.
-
-        Parameters
-        ----------
-        points : Nx2 Array
-        exposure : int
-        filter_wait : int, default 3000
-            How long to wait for the autofocus filter to move
-
-        Returns
-        -------
-        spectra : Nx1360
-        """
-        points = np.asanyarray(points)
-        # time.sleep(filter_wait)
-        arr = np.random.randn(points.shape[0], 1360)
-        arr = np.cumsum(arr, axis=1)
-        # time.sleep(filter_wait)
-        return arr
-
     def _onMDAStarted(self, sequence: MDASequence):
         super()._onMDAStarted(sequence)
         self._raman_path = self._path / "raman"
         self._raman_path.mkdir()
 
-    def record_raman(self, pos: int, t: int):
+    def record_raman(self, pos: int, t: int, exposure=500):
         """
         Record and save the raman spectra for the current position and time
 
@@ -90,13 +81,13 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
         ----------
         pos, t : int
             The position and time indices.
+        exposure : int, default 500
+            Per point raman exposure in ms.
 
         Returns
         -------
         spec : Nx1360
         """
-        print(f"here? {pos}, {t}")
-        # arr = run_laser(points)
         points = []
         which = []
         for layer in self._points_layers:
@@ -108,8 +99,7 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
         points = np.concatenate(points)
         # print(points.shape)
 
-        spec = self.acquire(points, 50)
-        # print(which)
+        spec = self._spectra_collector.collect_spectra(points, exposure)
 
         # TODO zarrify this
         save_name_base = (
