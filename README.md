@@ -7,3 +7,7 @@
 [![codecov](https://codecov.io/gh/ianhi/raman-mda-engine/branch/master/graph/badge.svg)](https://codecov.io/gh/ianhi/raman-mda-engine)
 
 pymmcore-plus mda engine for my raman experiments
+
+```bash
+pip install git+https://github.com/ianhi/raman-mda-engine
+```
