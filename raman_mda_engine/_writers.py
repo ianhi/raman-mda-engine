@@ -96,8 +96,7 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
             new_points = self._get_pos_points(layer.data, pos)
             points.append(new_points)
             which.extend([layer.name] * len(new_points))
-        points = np.concatenate(points)
-        # print(points.shape)
+        points = np.concatenate(points).T
 
         spec = self._spectra_collector.collect_spectra(points, exposure)
 
