@@ -7,8 +7,8 @@ import numpy as np
 from napari.layers import Points
 from typing import TYPE_CHECKING
 
+from raman_mda_engine import RamanEngine
 if TYPE_CHECKING:
-    from raman_mda_engine import RamanEngine
     from pymmcore_plus.mda import PMDAEngine
     from typing import Union, List
     from pymmcore_plus import CMMCorePlus
