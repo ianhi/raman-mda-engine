@@ -1,10 +1,12 @@
-from pymmcore_plus import CMMCorePlus
-from raman_mda_engine import RamanEngine
 from pathlib import Path
+
+from pymmcore_plus import CMMCorePlus
 from useq import MDASequence
 
-metadata={"raman": 
-    {
+from raman_mda_engine import RamanEngine
+
+metadata = {
+    "raman": {
         "z": "center",
         "channel": "BF",
     },
@@ -17,7 +19,7 @@ mda = MDASequence(
     z_plan={"range": 4, "step": 0.5},
     axis_order="tpcz",
 )
-print(mda.axis_order.index('z'))
+print(mda.axis_order.index("z"))
 print(mda.shape)
 
 core = CMMCorePlus.instance()

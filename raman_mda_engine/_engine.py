@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 from loguru import logger
@@ -9,10 +9,6 @@ from psygnal import Signal
 from pymmcore_plus.mda import MDAEngine
 from skimage.draw import disk
 from useq import MDAEvent
-
-if TYPE_CHECKING:
-    from pymmcore_plus import CMMCorePlus
-    from useq import MDASequence
 
 if TYPE_CHECKING:
     from pymmcore_plus import CMMCorePlus
@@ -26,7 +22,7 @@ class RamanEvents:
 class RamanEngine(MDAEngine):
     def __init__(
         self,
-        mmc: "CMMCorePlus" = None,
+        mmc: CMMCorePlus = None,
         img_shape=(512, 512),
         step_size: float = 10,
         radius: float = 30,
@@ -36,17 +32,12 @@ class RamanEngine(MDAEngine):
         self.raman_events = RamanEvents()
         self._rng = np.random.default_rng()
         self._img_shape = np.asarray(img_shape)
-        self._last_pos = {}
+        self._last_pos: dict[int, np.ndarray] = {}
         self._step_size = step_size
         self._radius = radius
         self._init_spread = init_spread
 
-    def _sequence_axis_order(self, seq: MDASequence):
-        event = next(seq.iter_events())
-        event_axes = list(event.index.keys())
-        return tuple(a for a in seq.axis_order if a in event_axes)
-
-    def _sequence_axis_order(self, seq: MDASequence):
+    def _sequence_axis_order(self, seq: MDASequence) -> tuple:
         event = next(seq.iter_events())
         event_axes = list(event.index.keys())
         return tuple(a for a in seq.axis_order if a in event_axes)
@@ -77,7 +68,7 @@ class RamanEngine(MDAEngine):
             img[disk(p, self._radius, shape=self._img_shape)] = 1
         return img
 
-    def _event_to_index(self, event: MDAEvent) -> Tuple[int, ...]:
+    def _event_to_index(self, event: MDAEvent) -> tuple[int, ...]:
         return tuple(event.index[a] for a in self._axis_order)
 
     def run(self, sequence: MDASequence) -> None:

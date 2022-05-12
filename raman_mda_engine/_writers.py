@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from pymmcore_mda_writers import SimpleMultiFileTiffWriter
-import numpy as np
-
-from napari.layers import Points
 from typing import TYPE_CHECKING
 
-from raman_mda_engine import RamanEngine
+import numpy as np
+from napari.layers import Points
+from pymmcore_mda_writers import SimpleMultiFileTiffWriter
+
+from ._engine import RamanEngine
+
 if TYPE_CHECKING:
-    from pymmcore_plus.mda import PMDAEngine
-    from typing import Union, List
+    pass
+
     from pymmcore_plus import CMMCorePlus
+    from pymmcore_plus.mda import PMDAEngine
     from useq import MDASequence
 
 __all__ = [
@@ -24,10 +26,12 @@ class fakeAcquirer:
     """
     For development
     """
+
     def collect_spectra(self, points, exposure=20):
         assert points.shape[0] == 2
-        arr = np.random.randn(points.shape[1], 1340)*exposure
+        arr = np.random.randn(points.shape[1], 1340) * exposure
         return np.cumsum(arr, axis=1)
+
 
 class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
     """
@@ -37,10 +41,10 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
 
     def __init__(
         self,
-        save_dir: Union[str, Path],
-        points_layers: List[Points],
+        save_dir: str | Path,
+        points_layers: list[Points],
         core: CMMCorePlus = None,
-        spectra_collector = None
+        spectra_collector=None,
     ):
         if not isinstance(points_layers, list):
             points_layers = list(points_layers)
@@ -55,6 +59,7 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
         self._spectra_collector = spectra_collector
         if self._spectra_collector is None:
             from raman_control import SpectraCollector
+
             self._spectra_collector = SpectraCollector.instance()
 
     def _on_mda_engine_registered(self, newEngine: PMDAEngine, oldEngine: PMDAEngine):

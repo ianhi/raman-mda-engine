@@ -10,4 +10,3 @@ def core() -> CMMCorePlus:
     if len(mmc.getLoadedDevices()) < 2:
         mmc.loadSystemConfiguration(str(Path(__file__).parent / "test-config.cfg"))
     return mmc
-
