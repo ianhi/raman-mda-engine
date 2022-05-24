@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
-from napari.layers import Points
+from napari_broadcastable_points import BroadcastablePoints
 from pymmcore_mda_writers import SimpleMultiFileTiffWriter
 
 from ._engine import RamanEngine
@@ -41,16 +41,19 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
 
     def __init__(
         self,
+        position_index: int,
         save_dir: str | Path,
-        points_layers: list[Points],
+        points_layers: BroadcastablePoints | list[BroadcastablePoints],
         core: CMMCorePlus = None,
         spectra_collector=None,
     ):
+        self._pos_idx = position_index
         if not isinstance(points_layers, list):
-            points_layers = list(points_layers)
-        if not all([isinstance(p, Points) for p in points_layers]):
+            points_layers = [points_layers]
+        if not all([isinstance(p, BroadcastablePoints) for p in points_layers]):
             raise TypeError(
-                "All layers in points_layers argument must be Points layers"
+                "All layers in points_layers argument must "
+                "be BroadcastablePoints layers"
             )
         super().__init__(save_dir, core)
 
@@ -69,9 +72,8 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
         if isinstance(newEngine, RamanEngine):
             newEngine.raman_events.collectRamanSpectra.connect(self.record_raman)
 
-    @staticmethod
-    def _get_pos_points(points: np.ndarray, pos: int):
-        return points[points[:, 0] == pos][:, -2:]
+    def _get_pos_points(self, points: np.ndarray, pos: int):
+        return points[points[:, self._pos_idx] == pos][:, -2:]
 
     def _onMDAStarted(self, sequence: MDASequence):
         super()._onMDAStarted(sequence)
