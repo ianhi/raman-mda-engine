@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
 from loguru import logger
 from psygnal import Signal
 from pymmcore_plus.mda import MDAEngine
-from skimage.draw import disk
 from useq import MDAEvent
 
 if TYPE_CHECKING:
+    from mda_simulator import ImageGenerator
     from pymmcore_plus import CMMCorePlus
     from useq import MDASequence
 
@@ -36,6 +35,19 @@ class RamanEngine(MDAEngine):
         self._step_size = step_size
         self._radius = radius
         self._init_spread = init_spread
+        self._img_gen: ImageGenerator | None = None
+
+    def register_image_generator(self, img_gen: ImageGenerator):
+        """
+        Register an ImageGenerator to use in place of the CMMCorePlus.snap method.
+        This is useful when developing using the demo camera, as you can make more
+        realistic images.
+        Parameters
+        ----------
+        img_gen : ImageGenerator
+        """
+        self._img_gen = img_gen
+        self._t = 0
 
     def _sequence_axis_order(self, seq: MDASequence) -> tuple:
         event = next(seq.iter_events())
@@ -55,18 +67,6 @@ class RamanEngine(MDAEngine):
         # for convenience
         self.out = np.zeros((*sequence.shape, *self._img_shape))
         return super()._prepare_to_run(sequence)
-
-    # cache to avoid adavancing the implicit time step when working through
-    # the different channels
-    @lru_cache
-    def _gen_img(self, p, t=None):
-        img = np.zeros(self._img_shape, dtype=np.uint8)
-        pos = self._last_pos[p]
-        pos += self._rng.normal(0, self._step_size, pos.shape)
-        self._last_pos[p] = pos
-        for p in pos:
-            img[disk(p, self._radius, shape=self._img_shape)] = 1
-        return img
 
     def _event_to_index(self, event: MDAEvent) -> tuple[int, ...]:
         return tuple(event.index[a] for a in self._axis_order)
@@ -111,10 +111,16 @@ class RamanEngine(MDAEngine):
                     self.raman_events.collectRamanSpectra.emit(p, t)
                     logger.info(f"collecting raman: {p=}, {t=}, {z=}")
 
-            img = self._gen_img(event.index.get("p", None), event.index.get("t", None))
-            self.out[self._event_to_index(event)] = img
-            # self._mmc.snapImage()
-            # img = self._mmc.getImage()
+            if self._img_gen is not None:
+                event_t = event.index.get("t", 0)
+                if event_t > self._t:
+                    self._img_gen.step_positions()
+                img = self._img_gen.snap_img(
+                    (event.x_pos, event.y_pos), event.z_pos, as_rgb=False
+                )
+            else:
+                self._mmc.snapImage()
+                img = self._mmc.getImage()
 
             self._events.frameReady.emit(img, event)
         self._finish_run(sequence)
