@@ -4,9 +4,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from loguru import logger
-from psygnal import Signal
+from napari.layers import Points
 from pymmcore_plus.mda import MDAEngine
 from useq import MDAEvent
+
+from ._events import QRamanSignaler as RamanSignaler
 
 if TYPE_CHECKING:
     from mda_simulator import ImageGenerator
@@ -14,28 +16,66 @@ if TYPE_CHECKING:
     from useq import MDASequence
 
 
-class RamanEvents:
-    collectRamanSpectra = Signal(int, int)  # pos, time
+class fakeAcquirer:
+    """
+    For development
+    """
+
+    def collect_spectra(self, points, exposure=20):
+        assert points.shape[0] == 2
+        arr = np.random.randn(points.shape[1], 1340) * exposure
+        return np.cumsum(arr, axis=1)
 
 
 class RamanEngine(MDAEngine):
     def __init__(
         self,
         mmc: CMMCorePlus = None,
-        img_shape=(512, 512),
-        step_size: float = 10,
-        radius: float = 30,
-        init_spread: float = 100,
+        default_rm_exp: float = 20,
+        spectra_collector=None,
+        position_idx: int = 1,
     ) -> None:
+        """
+        Parameters
+        ----------
+        ...
+        position_idx : int, default 1
+            Which axis is position for the points layers. Can't assume this
+            yet due to the brittleness of broadcastable points
+        """
         super().__init__(mmc)
-        self.raman_events = RamanEvents()
+        self.raman_events = RamanSignaler()
         self._rng = np.random.default_rng()
-        self._img_shape = np.asarray(img_shape)
-        self._last_pos: dict[int, np.ndarray] = {}
-        self._step_size = step_size
-        self._radius = radius
-        self._init_spread = init_spread
         self._img_gen: ImageGenerator | None = None
+        self._default_rm_exp = default_rm_exp
+        self.raman_events = RamanSignaler()
+        self._spectra_collector = spectra_collector
+        if self._spectra_collector is None:
+            from raman_control import SpectraCollector
+
+            self._spectra_collector = SpectraCollector.instance()
+        self._points_layers: list[Points] = []
+        self._pos_idx = position_idx
+
+    @property
+    def points_layers(self) -> list[Points]:
+        return self._points_layers
+
+    @points_layers.setter
+    def points_layers(self, val: list[Points]):
+        self._points_layers = val
+
+    @property
+    def default_rm_exposure(self) -> float:
+        return self._default_rm_exp
+
+    @default_rm_exposure.setter
+    def default_rm_exposure(self, val: float):
+        if not isinstance(val, float):
+            raise TypeError(
+                f"default_rm_exposure must have type of float, got {type(val)}"
+            )
+        self._default_rm_exp = val
 
     def register_image_generator(self, img_gen: ImageGenerator):
         """
@@ -54,22 +94,43 @@ class RamanEngine(MDAEngine):
         event_axes = list(event.index.keys())
         return tuple(a for a in seq.axis_order if a in event_axes)
 
-    def _prepare_to_run(self, sequence: MDASequence):
-        self._axis_order = self._sequence_axis_order(sequence)
-        P = sequence.shape[self._axis_order.index("p")]
-        for p in range(P):
-            if p not in self._last_pos:
-                Np = self._rng.integers(low=3, high=10)
-                self._last_pos[p] = self._rng.normal(
-                    self._img_shape / 2, self._init_spread, (Np, 2)
-                )
-
-        # for convenience
-        self.out = np.zeros((*sequence.shape, *self._img_shape))
-        return super()._prepare_to_run(sequence)
-
     def _event_to_index(self, event: MDAEvent) -> tuple[int, ...]:
         return tuple(event.index[a] for a in self._axis_order)
+
+    def _get_pos_points(self, points: np.ndarray, pos: int):
+        return points[points[:, self._pos_idx] == pos][:, -2:]
+
+    def record_raman(self, event: MDAEvent):
+        """
+        Record and save the raman spectra for the current position and time
+
+        Parameters
+        ----------
+        pos, t : int
+            The position and time indices.
+        exposure : int, default 500
+            Per point raman exposure in ms.
+
+        Returns
+        -------
+        spec : Nx1360
+        """
+        p, t = event.index["p"], event.index.get("t", 0)
+        points = []
+        which = []
+        for layer in self._points_layers:
+            # inefficient to always query this
+            # but also ensure that we always get the most up to date information
+            new_points = self._get_pos_points(layer.data, self._pos_idx)
+            points.append(new_points)
+            which.extend([layer.name] * len(new_points))
+        points = np.concatenate(points).T
+
+        logger.info(f"collecting raman: {p=}, {t=}")
+
+        spec = self._spectra_collector.collect_spectra(points, self._default_rm_exp)
+
+        self.raman_events.ramanSpectraReady.emit(event, spec, points, which)
 
     def run(self, sequence: MDASequence) -> None:
         """
@@ -107,9 +168,7 @@ class RamanEngine(MDAEngine):
             self._prep_hardware(event)
             if raman_meta:
                 if event.channel.config == channel and event.index["z"] == z:
-                    p, t = event.index["p"], event.index.get("t", 0)
-                    self.raman_events.collectRamanSpectra.emit(p, t)
-                    logger.info(f"collecting raman: {p=}, {t=}, {z=}")
+                    self.record_raman(event)
 
             if self._img_gen is not None:
                 event_t = event.index.get("t", 0)

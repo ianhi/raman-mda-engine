@@ -11,7 +11,8 @@ __all__ = [
     "__email__",
     "RamanEngine",
     "RamanTiffAndNumpyWriter",
+    "fakeAcquirer",
 ]
 
-from ._engine import RamanEngine
+from ._engine import RamanEngine, fakeAcquirer
 from ._writers import RamanTiffAndNumpyWriter
