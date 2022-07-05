@@ -29,7 +29,6 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
 
     def __init__(
         self,
-        position_index: int,
         save_dir: str | Path,
         core: CMMCorePlus = None,
     ):

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from loguru import logger
 from napari.layers import Points
+from pymmcore_plus import CMMCorePlus
 from pymmcore_plus.mda import MDAEngine
 from useq import MDAEvent
 
@@ -12,7 +13,6 @@ from ._events import QRamanSignaler as RamanSignaler
 
 if TYPE_CHECKING:
     from mda_simulator import ImageGenerator
-    from pymmcore_plus import CMMCorePlus
     from useq import MDASequence
 
 
@@ -21,7 +21,14 @@ class fakeAcquirer:
     For development
     """
 
-    def collect_spectra(self, points, exposure=20):
+    def collect_spectra_relative(self, points, exposure=20):
+        if np.max(np.abs(points)) > 1 or np.min(points) < 0:
+            raise ValueError("All points must be between 0 and 1 (inclusive).")
+        points = (np.ascontiguousarray(points) - 0.5) * 1.2
+        self.collect_spectra_volts(points, exposure)
+
+    def collect_spectra_volts(self, points, exposure=20):
+        points = np.ascontiguousarray(points)
         assert points.shape[0] == 2
         arr = np.random.randn(points.shape[1], 1340) * exposure
         return np.cumsum(arr, axis=1)
@@ -57,6 +64,18 @@ class RamanEngine(MDAEngine):
         self._points_layers: list[Points] = []
         self._pos_idx = position_idx
 
+        # default engine doesn't do this in super to avoid import loops
+        self._mmc = CMMCorePlus.instance()
+
+        # need to know image size in order to scale raman aiming points
+        if self._img_gen is not None:
+            self._img_shape = self._img_gen.img_shape
+        else:
+            self._img_shape: tuple[int, int] = (
+                self._mmc.getImageWidth(),
+                self._mmc.getImageHeight(),
+            )
+
     @property
     def points_layers(self) -> list[Points]:
         return self._points_layers
@@ -77,18 +96,6 @@ class RamanEngine(MDAEngine):
             )
         self._default_rm_exp = val
 
-    def register_image_generator(self, img_gen: ImageGenerator):
-        """
-        Register an ImageGenerator to use in place of the CMMCorePlus.snap method.
-        This is useful when developing using the demo camera, as you can make more
-        realistic images.
-        Parameters
-        ----------
-        img_gen : ImageGenerator
-        """
-        self._img_gen = img_gen
-        self._t = 0
-
     def _sequence_axis_order(self, seq: MDASequence) -> tuple:
         event = next(seq.iter_events())
         event_axes = list(event.index.keys())
@@ -106,14 +113,11 @@ class RamanEngine(MDAEngine):
 
         Parameters
         ----------
-        pos, t : int
-            The position and time indices.
-        exposure : int, default 500
-            Per point raman exposure in ms.
+        event : MDAEvent
 
         Returns
         -------
-        spec : Nx1360
+        spec : (N, 1340) array of float
         """
         p, t = event.index["p"], event.index.get("t", 0)
         points = []
@@ -126,9 +130,15 @@ class RamanEngine(MDAEngine):
             which.extend([layer.name] * len(new_points))
         points = np.concatenate(points).T
 
+        # put into [0, 1] for spectra collector
+        points[0, :] /= self._img_shape[0]
+        points[1, :] /= self._img_shape[1]
+
         logger.info(f"collecting raman: {p=}, {t=}")
 
-        spec = self._spectra_collector.collect_spectra(points, self._default_rm_exp)
+        spec = self._spectra_collector.collect_spectra_relative(
+            points, self._default_rm_exp
+        )
 
         self.raman_events.ramanSpectraReady.emit(event, spec, points, which)
 
@@ -170,16 +180,8 @@ class RamanEngine(MDAEngine):
                 if event.channel.config == channel and event.index["z"] == z:
                     self.record_raman(event)
 
-            if self._img_gen is not None:
-                event_t = event.index.get("t", 0)
-                if event_t > self._t:
-                    self._img_gen.step_positions()
-                img = self._img_gen.snap_img(
-                    (event.x_pos, event.y_pos), event.z_pos, as_rgb=False
-                )
-            else:
-                self._mmc.snapImage()
-                img = self._mmc.getImage()
+            self._mmc.snapImage()
+            img = self._mmc.getImage()
 
             self._events.frameReady.emit(img, event)
         self._finish_run(sequence)
