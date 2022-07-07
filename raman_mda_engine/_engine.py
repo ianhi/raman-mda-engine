@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from numbers import Real
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -38,7 +39,7 @@ class RamanEngine(MDAEngine):
     def __init__(
         self,
         mmc: CMMCorePlus = None,
-        default_rm_exp: float = 20,
+        default_rm_exp: Real = 20,
         spectra_collector=None,
         position_idx: int = 1,
     ) -> None:
@@ -85,14 +86,14 @@ class RamanEngine(MDAEngine):
         self._points_layers = val
 
     @property
-    def default_rm_exposure(self) -> float:
+    def default_rm_exposure(self) -> Real:
         return self._default_rm_exp
 
     @default_rm_exposure.setter
-    def default_rm_exposure(self, val: float):
-        if not isinstance(val, float):
+    def default_rm_exposure(self, val: Real):
+        if not isinstance(val, Real):
             raise TypeError(
-                f"default_rm_exposure must have type of float, got {type(val)}"
+                f"default_rm_exposure must be a real number, got {type(val)}"
             )
         self._default_rm_exp = val
 
