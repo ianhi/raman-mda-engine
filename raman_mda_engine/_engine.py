@@ -10,7 +10,7 @@ from pymmcore_plus.mda import MDAEngine
 from useq import MDAEvent
 
 from ._events import QRamanSignaler as RamanSignaler
-from .aiming import RamanAimingSource
+from .aiming import RamanAimingSource, SnappableRamanAimingSource
 
 if TYPE_CHECKING:
     from mda_simulator import ImageGenerator
@@ -26,7 +26,7 @@ class fakeAcquirer:
         if np.max(np.abs(points)) > 1 or np.min(points) < 0:
             raise ValueError("All points must be between 0 and 1 (inclusive).")
         points = (np.ascontiguousarray(points) - 0.5) * 1.2
-        self.collect_spectra_volts(points, exposure)
+        return self.collect_spectra_volts(points, exposure)
 
     def collect_spectra_volts(self, points, exposure=20):
         points = np.ascontiguousarray(points)
@@ -118,7 +118,7 @@ class RamanEngine(MDAEngine):
         points = []
         which = []
         for source in self.aiming_sources:
-            new_points = source.get_relative_points(event)
+            new_points = source.get_mda_points(event)
             points.append(new_points)
             which.extend([source.name] * len(new_points))
         points = np.hstack(points)
@@ -132,7 +132,13 @@ class RamanEngine(MDAEngine):
 
         self.raman_events.ramanSpectraReady.emit(event, spec, points, which)
 
-    def snap_raman(self, exposure: Real = None):
+    def snap_raman(
+        self,
+        exposure: Real = None,
+        aiming_sources: (
+            SnappableRamanAimingSource | list[SnappableRamanAimingSource]
+        ) = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Record raman
 
@@ -140,6 +146,8 @@ class RamanEngine(MDAEngine):
         ----------
         exposure : real, optional
             The exposure time to use, defaults to the *default_rm_exposure*
+        aiming_sources : list[SnappableAimingSource]
+            The aiming sources to use
 
         Returns
         -------
@@ -149,15 +157,27 @@ class RamanEngine(MDAEngine):
         """
         points = []
         which = []
-        for layer in self._points_layers:
-            new_points = layer._view_data
+        if aiming_sources is None:
+            aiming_sources = [
+                source
+                for source in self.aiming_sources
+                if isinstance(source, SnappableRamanAimingSource)
+            ]
+        for source in aiming_sources:
+            if not isinstance(source, SnappableRamanAimingSource):
+                raise TypeError(
+                    "All aiming sources must be SnappableRamanAimingSources"
+                )
+            new_points = source.get_current_points()
             points.append(new_points)
-            which.extend([layer.name] * len(new_points))
-        points = np.concatenate(points).T
+            which.extend([source.name] * len(new_points))
 
-        spec = self._spectra_collector.collect_spectra_relative(
-            points / self._img_shape
-        )
+        points = np.hstack(points)
+
+        if exposure is None:
+            exposure = self._default_rm_exp
+
+        spec = self._spectra_collector.collect_spectra_relative(points, exposure)
 
         return spec, points, which
 

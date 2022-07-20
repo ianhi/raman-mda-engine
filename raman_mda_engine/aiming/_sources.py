@@ -28,18 +28,24 @@ class RamanAimingSource(Protocol):
         """
         ...
 
+    name: str
+
+
+@runtime_checkable
+class SnappableRamanAimingSource(Protocol):
+    name: str
+
+    def get_current_points(self) -> np.ndarray:
+        ...
+
+
+class BaseSource:
     @property
     def name(self) -> str:
         return self._name
 
 
-@runtime_checkable
-class SnappableRamanAimingSource(RamanAimingSource):
-    def get_current_points(self) -> np.ndarray:
-        ...
-
-
-class SimpleGridSource(RamanAimingSource):
+class SimpleGridSource(BaseSource):
     """
     Make a grid to full extent of the Raman FOV
     """
@@ -63,7 +69,7 @@ class SimpleGridSource(RamanAimingSource):
         return self._grid
 
 
-class PointsLayerSource(RamanAimingSource):
+class PointsLayerSource(BaseSource):
     def __init__(
         self,
         points_layer: BroadcastablePoints,
@@ -95,7 +101,7 @@ class PointsLayerSource(RamanAimingSource):
         return points[points[:, self._pos_idx] == pos][:, -2:]
 
     def get_current_points(self) -> np.ndarray:
-        points = self._points.last_displayed()
+        points = self._points.last_displayed().T
         # put into [0, 1] for spectra collector
         points[0, :] /= self._img_shape[0]
         points[1, :] /= self._img_shape[1]
