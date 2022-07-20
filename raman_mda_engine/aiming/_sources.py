@@ -28,18 +28,28 @@ class RamanAimingSource(Protocol):
         """
         ...
 
+    name: str
+
+
+@runtime_checkable
+class SnappableRamanAimingSource(Protocol):
+    name: str
+
+    def get_current_points(self) -> np.ndarray:
+        ...
+
+
+class BaseSource:
+    def __init__(self, name: str = None) -> None:
+        if name is None:
+            self._name = str(uuid.uuid1())
+
     @property
     def name(self) -> str:
         return self._name
 
 
-@runtime_checkable
-class SnappableRamanAimingSource(RamanAimingSource):
-    def get_current_points(self) -> np.ndarray:
-        ...
-
-
-class SimpleGridSource(RamanAimingSource):
+class SimpleGridSource(BaseSource):
     """
     Make a grid to full extent of the Raman FOV
     """
@@ -52,9 +62,8 @@ class SimpleGridSource(RamanAimingSource):
         y = Y.flatten()
         self._grid = np.vstack([x, y])
         if name is None:
-            self._name = f"grid-{uuid.uuid1()}"
-        else:
-            self._name = name
+            name = f"grid-{uuid.uuid1()}"
+        super().__init__(name)
 
     def get_current_points(self):
         return self._grid
@@ -63,7 +72,7 @@ class SimpleGridSource(RamanAimingSource):
         return self._grid
 
 
-class PointsLayerSource(RamanAimingSource):
+class PointsLayerSource(BaseSource):
     def __init__(
         self,
         points_layer: BroadcastablePoints,
@@ -87,15 +96,14 @@ class PointsLayerSource(RamanAimingSource):
         else:
             self._img_shape = img_shape
         if name is None:
-            self._name = f"points-{uuid.uuid1()}"
-        else:
-            self._name = name
+            name = f"points-{uuid.uuid1()}"
+        super().__init__(name)
 
     def _get_pos_points(self, points: np.ndarray, pos: int):
         return points[points[:, self._pos_idx] == pos][:, -2:]
 
     def get_current_points(self) -> np.ndarray:
-        points = self._points.last_displayed()
+        points = self._points.last_displayed().T
         # put into [0, 1] for spectra collector
         points[0, :] /= self._img_shape[0]
         points[1, :] /= self._img_shape[1]

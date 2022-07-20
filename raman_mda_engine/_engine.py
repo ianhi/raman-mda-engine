@@ -10,7 +10,7 @@ from pymmcore_plus.mda import MDAEngine
 from useq import MDAEvent
 
 from ._events import QRamanSignaler as RamanSignaler
-from .aiming import RamanAimingSource
+from .aiming import RamanAimingSource, SnappableRamanAimingSource
 
 if TYPE_CHECKING:
     from mda_simulator import ImageGenerator
@@ -26,7 +26,7 @@ class fakeAcquirer:
         if np.max(np.abs(points)) > 1 or np.min(points) < 0:
             raise ValueError("All points must be between 0 and 1 (inclusive).")
         points = (np.ascontiguousarray(points) - 0.5) * 1.2
-        self.collect_spectra_volts(points, exposure)
+        return self.collect_spectra_volts(points, exposure)
 
     def collect_spectra_volts(self, points, exposure=20):
         points = np.ascontiguousarray(points)
@@ -39,7 +39,7 @@ class RamanEngine(MDAEngine):
     def __init__(
         self,
         mmc: CMMCorePlus = None,
-        default_rm_exp: Real = 20,
+        default_rm_exp: float = 20.0,
         spectra_collector=None,
         sources: list[RamanAimingSource] = None,
     ) -> None:
@@ -63,6 +63,7 @@ class RamanEngine(MDAEngine):
 
             self._spectra_collector = SpectraCollector.instance()
         self.aiming_sources = sources if sources is not None else []
+        self._sources: list[RamanAimingSource]
 
         # default engine doesn't do this in super to avoid import loops
         self._mmc = CMMCorePlus.instance()
@@ -85,7 +86,7 @@ class RamanEngine(MDAEngine):
 
     @property
     def default_rm_exposure(self) -> Real:
-        return self._default_rm_exp
+        return self._default_rm_exp  # type: ignore
 
     @default_rm_exposure.setter
     def default_rm_exposure(self, val: Real):
@@ -93,7 +94,9 @@ class RamanEngine(MDAEngine):
             raise TypeError(
                 f"default_rm_exposure must be a real number, got {type(val)}"
             )
-        self._default_rm_exp = val
+        # ignore typing here because above is the best check
+        # but mypy doesn't see float as part of Real so it's a mess
+        self._default_rm_exp = val  # type: ignore
 
     def _sequence_axis_order(self, seq: MDASequence) -> tuple:
         event = next(seq.iter_events())
@@ -118,7 +121,7 @@ class RamanEngine(MDAEngine):
         points = []
         which = []
         for source in self.aiming_sources:
-            new_points = source.get_relative_points(event)
+            new_points = source.get_mda_points(event)
             points.append(new_points)
             which.extend([source.name] * len(new_points))
         points = np.hstack(points)
@@ -131,6 +134,56 @@ class RamanEngine(MDAEngine):
         )
 
         self.raman_events.ramanSpectraReady.emit(event, spec, points, which)
+
+    def snap_raman(
+        self,
+        exposure: Real = None,
+        aiming_sources: None
+        | (SnappableRamanAimingSource | list[SnappableRamanAimingSource]) = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Record raman
+
+        Parameters
+        ----------
+        exposure : real, optional
+            The exposure time to use, defaults to the *default_rm_exposure*
+        aiming_sources : list[SnappableAimingSource]
+            The aiming sources to use
+
+        Returns
+        -------
+        spec : (N, 1340) np.ndarray
+        points : (N, 2) absolute positions in image space where laser was aimed
+        which : (N,) label (e.g. 'cell' or 'bkd') for each point
+        """
+        points = []
+        which = []
+        if aiming_sources is None:
+            aiming_sources = [
+                source
+                for source in self.aiming_sources
+                if isinstance(source, SnappableRamanAimingSource)
+            ]
+        elif not isinstance(aiming_sources, list):
+            aiming_sources = [aiming_sources]
+        for source in aiming_sources:
+            if not isinstance(source, SnappableRamanAimingSource):
+                raise TypeError(
+                    "All aiming sources must be SnappableRamanAimingSources"
+                )
+            new_points = source.get_current_points()
+            points.append(new_points)
+            which.extend([source.name] * len(new_points))
+
+        points = np.hstack(points)
+
+        if exposure is None:
+            exposure = self._default_rm_exp  # type: ignore
+
+        spec = self._spectra_collector.collect_spectra_relative(points, exposure)
+
+        return spec, points, which
 
     def run(self, sequence: MDASequence) -> None:
         """

@@ -207,7 +207,7 @@ def linkcode_resolve(domain, info):
             return None
 
     try:
-        fn = inspect.getsourcefile(inspect.unwrap(obj))
+        fn = inspect.getsourcefile(inspect.unwrap(obj))  # type: ignore
     except TypeError:
         fn = None
     if not fn:
