@@ -132,6 +132,35 @@ class RamanEngine(MDAEngine):
 
         self.raman_events.ramanSpectraReady.emit(event, spec, points, which)
 
+    def snap_raman(self, exposure: Real = None):
+        """
+        Record raman
+
+        Parameters
+        ----------
+        exposure : real, optional
+            The exposure time to use, defaults to the *default_rm_exposure*
+
+        Returns
+        -------
+        spec : (N, 1340) np.ndarray
+        points : (N, 2) absolute positions in image space where laser was aimed
+        which : (N,) label (e.g. 'cell' or 'bkd') for each point
+        """
+        points = []
+        which = []
+        for layer in self._points_layers:
+            new_points = layer._view_data
+            points.append(new_points)
+            which.extend([layer.name] * len(new_points))
+        points = np.concatenate(points).T
+
+        spec = self._spectra_collector.collect_spectra_relative(
+            points / self._img_shape
+        )
+
+        return spec, points, which
+
     def run(self, sequence: MDASequence) -> None:
         """
         Run the multi-dimensional acquistion defined by `sequence`.
