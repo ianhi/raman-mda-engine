@@ -39,7 +39,7 @@ class RamanEngine(MDAEngine):
     def __init__(
         self,
         mmc: CMMCorePlus = None,
-        default_rm_exp: Real = 20,
+        default_rm_exp: float = 20.0,
         spectra_collector=None,
         sources: list[RamanAimingSource] = None,
     ) -> None:
@@ -63,6 +63,7 @@ class RamanEngine(MDAEngine):
 
             self._spectra_collector = SpectraCollector.instance()
         self.aiming_sources = sources if sources is not None else []
+        self._sources: list[RamanAimingSource]
 
         # default engine doesn't do this in super to avoid import loops
         self._mmc = CMMCorePlus.instance()
@@ -85,7 +86,7 @@ class RamanEngine(MDAEngine):
 
     @property
     def default_rm_exposure(self) -> Real:
-        return self._default_rm_exp
+        return self._default_rm_exp  # type: ignore
 
     @default_rm_exposure.setter
     def default_rm_exposure(self, val: Real):
@@ -93,7 +94,9 @@ class RamanEngine(MDAEngine):
             raise TypeError(
                 f"default_rm_exposure must be a real number, got {type(val)}"
             )
-        self._default_rm_exp = val
+        # ignore typing here because above is the best check
+        # but mypy doesn't see float as part of Real so it's a mess
+        self._default_rm_exp = val  # type: ignore
 
     def _sequence_axis_order(self, seq: MDASequence) -> tuple:
         event = next(seq.iter_events())
@@ -135,9 +138,8 @@ class RamanEngine(MDAEngine):
     def snap_raman(
         self,
         exposure: Real = None,
-        aiming_sources: (
-            SnappableRamanAimingSource | list[SnappableRamanAimingSource]
-        ) = None,
+        aiming_sources: None
+        | (SnappableRamanAimingSource | list[SnappableRamanAimingSource]) = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Record raman
@@ -163,6 +165,8 @@ class RamanEngine(MDAEngine):
                 for source in self.aiming_sources
                 if isinstance(source, SnappableRamanAimingSource)
             ]
+        elif not isinstance(aiming_sources, list):
+            aiming_sources = [aiming_sources]
         for source in aiming_sources:
             if not isinstance(source, SnappableRamanAimingSource):
                 raise TypeError(
@@ -175,7 +179,7 @@ class RamanEngine(MDAEngine):
         points = np.hstack(points)
 
         if exposure is None:
-            exposure = self._default_rm_exp
+            exposure = self._default_rm_exp  # type: ignore
 
         spec = self._spectra_collector.collect_spectra_relative(points, exposure)
 

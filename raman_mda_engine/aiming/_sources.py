@@ -40,6 +40,10 @@ class SnappableRamanAimingSource(Protocol):
 
 
 class BaseSource:
+    def __init__(self, name: str = None) -> None:
+        if name is None:
+            self._name = str(uuid.uuid1())
+
     @property
     def name(self) -> str:
         return self._name
@@ -58,9 +62,8 @@ class SimpleGridSource(BaseSource):
         y = Y.flatten()
         self._grid = np.vstack([x, y])
         if name is None:
-            self._name = f"grid-{uuid.uuid1()}"
-        else:
-            self._name = name
+            name = f"grid-{uuid.uuid1()}"
+        super().__init__(name)
 
     def get_current_points(self):
         return self._grid
@@ -93,9 +96,8 @@ class PointsLayerSource(BaseSource):
         else:
             self._img_shape = img_shape
         if name is None:
-            self._name = f"points-{uuid.uuid1()}"
-        else:
-            self._name = name
+            name = f"points-{uuid.uuid1()}"
+        super().__init__(name)
 
     def _get_pos_points(self, points: np.ndarray, pos: int):
         return points[points[:, self._pos_idx] == pos][:, -2:]
