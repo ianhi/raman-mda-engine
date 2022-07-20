@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from loguru import logger
-from napari.layers import Points
 from pymmcore_plus import CMMCorePlus
 from pymmcore_plus.mda import MDAEngine
 from useq import MDAEvent
 
 from ._events import QRamanSignaler as RamanSignaler
+from .aiming import RamanAimingSource
 
 if TYPE_CHECKING:
     from mda_simulator import ImageGenerator
@@ -41,7 +41,7 @@ class RamanEngine(MDAEngine):
         mmc: CMMCorePlus = None,
         default_rm_exp: Real = 20,
         spectra_collector=None,
-        position_idx: int = 1,
+        sources: list[RamanAimingSource] = None,
     ) -> None:
         """
         Parameters
@@ -62,28 +62,26 @@ class RamanEngine(MDAEngine):
             from raman_control import SpectraCollector
 
             self._spectra_collector = SpectraCollector.instance()
-        self._points_layers: list[Points] = []
-        self._pos_idx = position_idx
+        self.aiming_sources = sources if sources is not None else []
 
         # default engine doesn't do this in super to avoid import loops
         self._mmc = CMMCorePlus.instance()
 
-        # need to know image size in order to scale raman aiming points
-        if self._img_gen is not None:
-            self._img_shape = self._img_gen.img_shape
-        else:
-            self._img_shape: tuple[int, int] = (
-                self._mmc.getImageWidth(),
-                self._mmc.getImageHeight(),
-            )
-
     @property
-    def points_layers(self) -> list[Points]:
-        return self._points_layers
+    def aiming_sources(self) -> list[RamanAimingSource]:
+        return self._sources
 
-    @points_layers.setter
-    def points_layers(self, val: list[Points]):
-        self._points_layers = val
+    @aiming_sources.setter
+    def aiming_sources(self, val: list[RamanAimingSource]):
+        if val is None:
+            self._sources = []
+        elif all([isinstance(source, RamanAimingSource) for source in val]):
+            self._sources = list(val)
+        else:
+            raise TypeError(
+                "aiming_sources must be a list of objects"
+                " conforming to the RamanAimingSource protocol."
+            )
 
     @property
     def default_rm_exposure(self) -> Real:
@@ -105,9 +103,6 @@ class RamanEngine(MDAEngine):
     def _event_to_index(self, event: MDAEvent) -> tuple[int, ...]:
         return tuple(event.index[a] for a in self._axis_order)
 
-    def _get_pos_points(self, points: np.ndarray, pos: int):
-        return points[points[:, self._pos_idx] == pos][:, -2:]
-
     def record_raman(self, event: MDAEvent):
         """
         Record and save the raman spectra for the current position and time
@@ -120,21 +115,15 @@ class RamanEngine(MDAEngine):
         -------
         spec : (N, 1340) array of float
         """
-        p, t = event.index["p"], event.index.get("t", 0)
         points = []
         which = []
-        for layer in self._points_layers:
-            # inefficient to always query this
-            # but also ensure that we always get the most up to date information
-            new_points = self._get_pos_points(layer.data, self._pos_idx)
+        for source in self.aiming_sources:
+            new_points = source.get_relative_points(event)
             points.append(new_points)
-            which.extend([layer.name] * len(new_points))
-        points = np.concatenate(points).T
+            which.extend([source.name] * len(new_points))
+        points = np.hstack(points)
 
-        # put into [0, 1] for spectra collector
-        points[0, :] /= self._img_shape[0]
-        points[1, :] /= self._img_shape[1]
-
+        p, t = event.index["p"], event.index.get("t", 0)
         logger.info(f"collecting raman: {p=}, {t=}")
 
         spec = self._spectra_collector.collect_spectra_relative(
