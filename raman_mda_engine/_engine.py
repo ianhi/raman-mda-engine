@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from numbers import Real
 from typing import TYPE_CHECKING
 
@@ -198,33 +199,41 @@ class RamanEngine(MDAEngine):
         sequence : MDASequence
             The sequence of events to run.
         """
-        self._prepare_to_run(sequence)
-        raman_meta = sequence.metadata.get("raman", None)
-        if raman_meta:
-            channel = raman_meta.get("channel", "BF")
-            z = raman_meta.get("z", "center")
-            z_index = self._sequence_axis_order(sequence).index("z")
-            if z == "center":
-                n_z = sequence.shape[z_index]
-                if n_z % 2 == 0:
-                    raise ValueError("for z=center n_z must be odd.")
-                z = n_z // 2
-
-        for event in sequence:
-            cancelled = self._wait_until_event(event, sequence)
-
-            # If cancelled break out of the loop
-            if cancelled:
-                break
-
-            logger.info(event)
-            self._prep_hardware(event)
+        try:
+            self._prepare_to_run(sequence)
+            raman_meta = sequence.metadata.get("raman", None)
             if raman_meta:
-                if event.channel.config == channel and event.index["z"] == z:
-                    self.record_raman(event)
+                channel = raman_meta.get("channel", "BF")
+                z = raman_meta.get("z", "center")
+                z_index = self._sequence_axis_order(sequence).index("z")
+                if z == "center":
+                    n_z = sequence.shape[z_index]
+                    if n_z % 2 == 0:
+                        raise ValueError("for z=center n_z must be odd.")
+                    z = n_z // 2
 
-            self._mmc.snapImage()
-            img = self._mmc.getImage()
+            for event in sequence:
+                cancelled = self._wait_until_event(event, sequence)
 
-            self._events.frameReady.emit(img, event)
+                # If cancelled break out of the loop
+                if cancelled:
+                    break
+
+                logger.info(event)
+                self._prep_hardware(event)
+                if raman_meta:
+                    if event.channel.config == channel and event.index["z"] == z:
+                        self.record_raman(event)
+
+                self._mmc.snapImage()
+                img = self._mmc.getImage()
+
+                self._events.frameReady.emit(img, event)
+        except Exception as e:  # noqa E722
+            # clean up so future MDAs can be run
+            self._canceled = False
+            self._running = False
+            with contextlib.suppress(Exception):
+                self._finish_run(sequence)
+            raise e
         self._finish_run(sequence)
