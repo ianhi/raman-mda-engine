@@ -19,10 +19,6 @@ __all__ = [
 
 @runtime_checkable
 class RamanAimingSource(Protocol):
-    """
-    A source of points to aim the laser
-    """
-
     @abstractmethod
     def get_mda_points(self, event: MDAEvent) -> np.ndarray:
         """
@@ -75,7 +71,7 @@ class SimpleGridSource(BaseSource):
         X, Y = np.meshgrid(np.linspace(0, 1, N_x), np.linspace(0, 1, N_y))
         x = X.flatten()
         y = Y.flatten()
-        self._grid = np.vstack([x, y])
+        self._grid = np.hstack([x[:, None], y[:, None]])
         if name is None:
             name = f"grid-{uuid.uuid1()}"
         super().__init__(name)
@@ -118,10 +114,10 @@ class PointsLayerSource(BaseSource):
         return points[points[:, self._pos_idx] == pos][:, -2:]
 
     def get_current_points(self) -> np.ndarray:
-        points = self._points.last_displayed().T
+        points = self._points.last_displayed()
         # put into [0, 1] for spectra collector
-        points[0, :] /= self._img_shape[0]
-        points[1, :] /= self._img_shape[1]
+        points[:, 0] /= self._img_shape[0]
+        points[:, 1] /= self._img_shape[1]
         return points
 
     def get_points_mda(self, event: MDAEvent) -> np.ndarray:
@@ -129,6 +125,6 @@ class PointsLayerSource(BaseSource):
         points = self._get_pos_points(self._points.data, p)
 
         # put into [0, 1] for spectra collector
-        points[0, :] /= self._img_shape[0]
-        points[1, :] /= self._img_shape[1]
+        points[:, 0] /= self._img_shape[0]
+        points[:, 1] /= self._img_shape[1]
         return points
