@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from abc import abstractmethod
 from typing import Protocol, runtime_checkable
 
 import numpy as np
@@ -22,21 +23,35 @@ class RamanAimingSource(Protocol):
     A source of points to aim the laser
     """
 
+    @abstractmethod
     def get_mda_points(self, event: MDAEvent) -> np.ndarray:
         """
-        Returns points in [0,1] space with shape (2, N)
+        Generate points to aim the laser for a given MDA event
+
+        Parameters
+        ----------
+        event : useq.MDAEvent
+
+        Returns
+        -------
+        relative_coords : (N, 2) array
+            Positions to aim the laser in relative coordinates [0, 1]
+
         """
-        ...
 
     name: str
 
 
 @runtime_checkable
-class SnappableRamanAimingSource(Protocol):
-    name: str
-
+class SnappableRamanAimingSource(RamanAimingSource, Protocol):
+    @abstractmethod
     def get_current_points(self) -> np.ndarray:
-        ...
+        """
+        Returns
+        -------
+        relative_coords : (N, 2) array
+            Positions to aim the laser in relative coordinates [0, 1]
+        """
 
 
 class BaseSource:
