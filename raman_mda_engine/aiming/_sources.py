@@ -54,6 +54,8 @@ class BaseSource:
     def __init__(self, name: str = None) -> None:
         if name is None:
             self._name = str(uuid.uuid1())
+        else:
+            self._name = name
 
     @property
     def name(self) -> str:
@@ -73,7 +75,7 @@ class SimpleGridSource(BaseSource):
         y = Y.flatten()
         self._grid = np.hstack([x[:, None], y[:, None]])
         if name is None:
-            name = f"grid-{uuid.uuid1()}"
+            name = f"grid-{N_x}_{N_y}-{uuid.uuid1()}"
         super().__init__(name)
 
     def get_current_points(self):
