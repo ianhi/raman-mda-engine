@@ -1,19 +1,23 @@
 from __future__ import annotations
 
+import numbers
 import uuid
 from abc import abstractmethod
 from typing import Protocol, runtime_checkable
 
 import numpy as np
 from napari_broadcastable_points import BroadcastablePoints
+from napari.layers import Shapes
 from pymmcore_plus import CMMCorePlus
 from useq import MDAEvent
+from .util import polygon_laser_focus
 
 __all__ = [
     "SnappableRamanAimingSource",
     "RamanAimingSource",
     "SimpleGridSource",
     "PointsLayerSource",
+    "ShapesLayerSource"
 ]
 
 
@@ -130,3 +134,71 @@ class PointsLayerSource(BaseSource):
         points[:, 0] /= self._img_shape[0]
         points[:, 1] /= self._img_shape[1]
         return points
+
+class ShapesLayerSource(BaseSource):
+    def __init__(
+        self,
+        shapes_layer: Shapes,
+        name: str = None,
+        position_idx: int = 1,
+        img_shape: tuple[int, int] = None,
+        spacing: int = 15,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        ...
+        position_idx : int, default 1
+            Which axis is position for the points layers. Can't assume this
+            yet due to the brittleness of broadcastable points
+        spacing: int, default 15
+            Number of pixels between points
+        """
+
+        self._pos_idx = position_idx
+        self._shapes = shapes_layer
+        self._spacing = spacing
+        if img_shape is None:
+            core = CMMCorePlus.instance()
+            self._img_shape = core.getImageWidth(), core.getImageHeight()
+        else:
+            self._img_shape = img_shape
+        if name is None:
+            name = f"shapes-{uuid.uuid1()}"
+
+        super().__init__(name)
+
+    @property
+    def spacing(self) -> int:
+        return self._spacing
+
+    @spacing.setter
+    def spacing(self, val: int):
+        if not isinstance(val, numbers.Integral):
+            raise TypeError("spacing must be an integer")
+        self._spacing = val
+
+    def get_current_points(self, spacing: int = None) -> np.ndarray:
+        """
+        Parameters
+        ----------
+        spacing : int, optional
+            THe spacing between points in pixels. If *None* default to self.spacing
+        """
+        spacing = spacing or self._spacing
+        all_points = []
+        for i in range(len(self._shapes.data)):
+            points = polygon_laser_focus(
+                shape_data=self._shapes.data[i],
+                shape_type=self._shapes.shape_type[i],
+                density=spacing,
+                plot=False
+            )
+            points[:, 0] /= self._img_shape[0]
+            points[:, 1] /= self._img_shape[1]
+            all_points.append(points)
+
+        return np.vstack(all_points)
+
+    def get_mda_points(self):
+        return self.get_current_points()
