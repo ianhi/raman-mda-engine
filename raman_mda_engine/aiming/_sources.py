@@ -151,9 +151,12 @@ class ShapesLayerSource(BaseSource):
         Parameters
         ----------
         ...
+        shapes_layer : napari.layer.Shapes
+        name : str, optional
+            if *None* then shapes-[uid]
         position_idx : int, default 1
-            Which axis is position for the points layers. Can't assume this
-            yet due to the brittleness of broadcastable points
+            Unused
+        img_shape : (int, int), optional
         spacing: int, default 15
             Number of pixels between points
         """
@@ -211,21 +214,8 @@ class ShapesLayerSource(BaseSource):
 
         return np.vstack(all_points)
 
-    """
-        all_points = []
-        for i in range(len(self._shapes.data)):
-            points = polygon_laser_focus(
-                shape_data=self._shapes.data[i],
-                shape_type=self._shapes.shape_type[i],
-                density=spacing,
-                plot=False
-            )
-            points[:, 0] /= self._img_shape[0]
-            points[:, 1] /= self._img_shape[1]
-            all_points.append(points)
-
-        return np.vstack(all_points)
-    """
-
     def get_mda_points(self):
+        """
+        TODO : waiting until broadcastable-shapes-exists
+        """
         return self.get_current_points()
