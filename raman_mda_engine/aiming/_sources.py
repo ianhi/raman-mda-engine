@@ -8,6 +8,7 @@ from typing import Protocol, runtime_checkable
 import numpy as np
 from napari_broadcastable_points import BroadcastablePoints
 from napari.layers import Shapes
+from napari import current_viewer
 from pymmcore_plus import CMMCorePlus
 from useq import MDAEvent
 from .util import polygon_laser_focus
@@ -135,6 +136,7 @@ class PointsLayerSource(BaseSource):
         points[:, 1] /= self._img_shape[1]
         return points
 
+
 class ShapesLayerSource(BaseSource):
     def __init__(
         self,
@@ -186,6 +188,29 @@ class ShapesLayerSource(BaseSource):
             THe spacing between points in pixels. If *None* default to self.spacing
         """
         spacing = spacing or self._spacing
+
+        curr_shape = []
+        curr_type = []
+        for shape, type_ in zip(self._shapes.data, self._shapes.shape_type):
+            if np.all(shape[:, :-2] == current_viewer().dims.current_step[:-2]):
+                curr_shape.append(np.array(shape[:, [-2, -1]]))
+                curr_type.append(type_)
+
+        all_points = []
+        for i in range(len(curr_shape)):
+            points = polygon_laser_focus(
+                shape_data=curr_shape[i],
+                shape_type=curr_type[i],
+                density=spacing,
+                plot=False
+            )
+            points[:, 0] /= self._img_shape[0]
+            points[:, 1] /= self._img_shape[1]
+            all_points.append(points)
+
+        return np.vstack(all_points)
+
+    """
         all_points = []
         for i in range(len(self._shapes.data)):
             points = polygon_laser_focus(
@@ -199,6 +224,7 @@ class ShapesLayerSource(BaseSource):
             all_points.append(points)
 
         return np.vstack(all_points)
+    """
 
     def get_mda_points(self):
         return self.get_current_points()
