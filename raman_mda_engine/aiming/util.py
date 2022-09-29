@@ -1,8 +1,10 @@
 from math import floor
+
+import matplotlib.pyplot as plt
+import numpy as np
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-import numpy as np
-import matplotlib.pyplot as plt
+
 
 def polygon_laser_focus(shape_data, shape_type, density, plot=True):
     """
@@ -39,7 +41,7 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
         return np.array(points)
 
     def circle(circ, d_c):
-        radius = (circ[2, 0] - circ[0, 0]) / 2
+        (circ[2, 0] - circ[0, 0]) / 2
         points = []
         y_cm, x_cm = (circ[2, 0] + circ[0, 0]) / 2, (circ[1, 1] + circ[0, 1]) / 2
         rady, radx = abs(circ[2, 0] - circ[0, 0]) / 2, abs(circ[1, 1] - circ[0, 1]) / 2
@@ -50,7 +52,7 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
                 if i == 0 or i == len(rxs) - 1:
                     curr_y = y_cm
                 else:
-                    curr_y = rady * np.sqrt(1 - (rx - x_cm) ** 2 / radx ** 2) + y_cm
+                    curr_y = rady * np.sqrt(1 - (rx - x_cm) ** 2 / radx**2) + y_cm
 
                 n_y = floor((curr_y - y_cm) / (radx / (n_c - 1)))
                 rys = np.linspace(2 * y_cm - curr_y, curr_y, n_y + 2)
@@ -63,7 +65,7 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
                 if j == 0 or j == len(rys) - 1:
                     curr_x = x_cm
                 else:
-                    curr_x = radx * np.sqrt(1 - (ry - y_cm) ** 2 / rady ** 2) + x_cm
+                    curr_x = radx * np.sqrt(1 - (ry - y_cm) ** 2 / rady**2) + x_cm
 
                 n_x = floor((curr_x - x_cm) / (rady / (n_c - 1)))
                 rxs = np.linspace(2 * x_cm - curr_x, curr_x, n_x + 2)
@@ -73,8 +75,16 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
         return np.array(points)
 
     def irregular(irr, d_i):
-        y_min, y_max, x_min, x_max = min(irr[:, 1]), max(irr[:, 1]), min(irr[:, 0]), max(irr[:, 0])
-        rect_points = rectangle(np.array([[x_min, y_min], [x_min, y_max], [x_max, y_max], [x_max, y_min]]), d_i)
+        y_min, y_max, x_min, x_max = (
+            min(irr[:, 1]),
+            max(irr[:, 1]),
+            min(irr[:, 0]),
+            max(irr[:, 0]),
+        )
+        rect_points = rectangle(
+            np.array([[x_min, y_min], [x_min, y_max], [x_max, y_max], [x_max, y_min]]),
+            d_i,
+        )
         polygon = Polygon(irr)
         points = []
         for rect_point in rect_points:
@@ -84,18 +94,18 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
 
         return np.array(points)
 
-    if shape_type == 'rectangle':
+    if shape_type == "rectangle":
         points = rectangle(shape_data, density)
-    elif shape_type == 'ellipse':
+    elif shape_type == "ellipse":
         points = circle(shape_data, density)
-    elif shape_type == 'polygon':
+    elif shape_type == "polygon":
         points = irregular(shape_data, density)
 
     if plot:
         plt.figure()
         plt.scatter(points.T[0], points.T[1])
         plt.scatter(shape_data.T[0], shape_data.T[1])
-        plt.axis('scaled')
+        plt.axis("scaled")
 
     # return points
     return points

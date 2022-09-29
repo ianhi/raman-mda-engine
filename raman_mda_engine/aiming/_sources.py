@@ -6,11 +6,12 @@ from abc import abstractmethod
 from typing import Protocol, runtime_checkable
 
 import numpy as np
-from napari_broadcastable_points import BroadcastablePoints
-from napari.layers import Shapes
 from napari import current_viewer
+from napari.layers import Shapes
+from napari_broadcastable_points import BroadcastablePoints
 from pymmcore_plus import CMMCorePlus
 from useq import MDAEvent
+
 from .util import polygon_laser_focus
 
 __all__ = [
@@ -18,7 +19,7 @@ __all__ = [
     "RamanAimingSource",
     "SimpleGridSource",
     "PointsLayerSource",
-    "ShapesLayerSource"
+    "ShapesLayerSource",
 ]
 
 
@@ -202,7 +203,7 @@ class ShapesLayerSource(BaseSource):
                 shape_data=curr_shape[i],
                 shape_type=curr_type[i],
                 density=spacing,
-                plot=False
+                plot=False,
             )
             points[:, 0] /= self._img_shape[0]
             points[:, 1] /= self._img_shape[1]
