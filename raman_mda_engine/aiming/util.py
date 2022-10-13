@@ -146,17 +146,29 @@ def brush_laser_focus(label_data, density, plot=True):
         return np.array(points)
 
     ones = np.ones(label_data.shape[0])
-    y_min, y_max = np.nonzero(np.matrix(label_data) @ ones)[1][0], np.nonzero(np.matrix(label_data) @ ones)[1][-1]
-    x_min, x_max = np.nonzero(np.matrix(label_data).T @ ones)[1][0], np.nonzero(np.matrix(label_data).T @ ones)[1][-1]
+    y_min, y_max = (
+        np.nonzero(np.matrix(label_data) @ ones)[1][0],
+        np.nonzero(np.matrix(label_data) @ ones)[1][-1],
+    )
+    x_min, x_max = (
+        np.nonzero(np.matrix(label_data).T @ ones)[1][0],
+        np.nonzero(np.matrix(label_data).T @ ones)[1][-1],
+    )
 
-    rect = np.rint(rectangle(np.array([[x_min, y_min], [x_min, y_max], [x_max, y_max], [x_max, y_min]]), density))
-    points = rect[label_data[rect[:,1].astype(int), rect[:,0].astype(int)] > 0][:,::-1]
+    rect = np.rint(
+        rectangle(
+            np.array([[x_min, y_min], [x_min, y_max], [x_max, y_max], [x_max, y_min]]),
+            density,
+        )
+    )
+    points = rect[label_data[rect[:, 1].astype(int), rect[:, 0].astype(int)] > 0][
+        :, ::-1
+    ]
 
     if plot:
         plt.figure()
         plt.imshow(label_data.T)
         plt.scatter(points.T[0], points.T[1])
-        plt.axis('scaled')
+        plt.axis("scaled")
 
     return points
-

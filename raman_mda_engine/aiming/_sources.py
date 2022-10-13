@@ -7,13 +7,12 @@ from typing import Protocol, runtime_checkable
 
 import numpy as np
 from napari import current_viewer
-from napari.layers import Shapes
-from napari.layers import Labels
+from napari.layers import Labels, Shapes
 from napari_broadcastable_points import BroadcastablePoints
 from pymmcore_plus import CMMCorePlus
 from useq import MDAEvent
 
-from .util import polygon_laser_focus, brush_laser_focus
+from .util import brush_laser_focus, polygon_laser_focus
 
 __all__ = [
     "SnappableRamanAimingSource",
