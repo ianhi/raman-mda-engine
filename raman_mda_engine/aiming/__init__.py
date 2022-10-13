@@ -1,4 +1,5 @@
 from ._sources import (
+    LabelsLayerSource,
     PointsLayerSource,
     RamanAimingSource,
     ShapesLayerSource,
@@ -12,4 +13,5 @@ __all__ = [
     "SimpleGridSource",
     "PointsLayerSource",
     "ShapesLayerSource",
+    "LabelsLayerSource",
 ]

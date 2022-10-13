@@ -109,3 +109,66 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
 
     # return points
     return points
+
+
+def brush_laser_focus(label_data, density, plot=True):
+    """
+    shape_data is the array of points that napari uses to define the shape
+    shape_type is the type the napari assigns to the shape
+    density is the pixels per interval between lattice points
+    """
+
+    def rectangle(rect, d_r):
+        h, w = abs(rect[2, 0] - rect[1, 0]), abs(rect[1, 1] - rect[0, 1])
+        if h > w:
+            n_r = int((rect[2, 0] - rect[1, 0]) / d_r)
+            heights = np.linspace(rect[1, 0], rect[2, 0], n_r)
+            n_h = floor(w / (h / (n_r - 1)))
+            if n_h != 0:
+                widths = np.linspace(rect[0, 1], rect[1, 1], n_h + 2)
+            else:
+                widths = np.array([rect[0, 1], rect[1, 1]])
+
+        else:
+            n_r = int((rect[1, 1] - rect[0, 1]) / d_r)
+            widths = np.linspace(rect[0, 1], rect[1, 1], n_r)
+            n_w = floor(h / (w / (n_r - 1)))
+            if n_w != 0:
+                heights = np.linspace(rect[1, 0], rect[2, 0], n_w + 2)
+            else:
+                heights = np.array([rect[1, 0], rect[2, 0]])
+
+        points = []
+        for width in widths:
+            for height in heights:
+                points.append([height, width])
+
+        return np.array(points)
+
+    ones = np.ones(label_data.shape[0])
+    y_min, y_max = (
+        np.nonzero(np.matrix(label_data) @ ones)[1][0],
+        np.nonzero(np.matrix(label_data) @ ones)[1][-1],
+    )
+    x_min, x_max = (
+        np.nonzero(np.matrix(label_data).T @ ones)[1][0],
+        np.nonzero(np.matrix(label_data).T @ ones)[1][-1],
+    )
+
+    rect = np.rint(
+        rectangle(
+            np.array([[x_min, y_min], [x_min, y_max], [x_max, y_max], [x_max, y_min]]),
+            density,
+        )
+    )
+    points = rect[label_data[rect[:, 1].astype(int), rect[:, 0].astype(int)] > 0][
+        :, ::-1
+    ]
+
+    if plot:
+        plt.figure()
+        plt.imshow(label_data.T)
+        plt.scatter(points.T[0], points.T[1])
+        plt.axis("scaled")
+
+    return points
