@@ -24,15 +24,20 @@ class fakeAcquirer:
     """
 
     def collect_spectra_relative(self, points, exposure=20):
-        if np.max(np.abs(points)) > 1 or np.min(points) < 0:
-            raise ValueError("All points must be between 0 and 1 (inclusive).")
+        points = np.asarray(points)
+        if points.min() < 0 or points.max() > 1:
+            raise ValueError("Points must be in [0, 1]")
+        if points.shape[1] != 2 or points.ndim != 2:
+            raise ValueError(
+                f"volts must have shape (N, 2) but has shape {points.shape}"
+            )
         points = (np.ascontiguousarray(points) - 0.5) * 1.2
         return self.collect_spectra_volts(points, exposure)
 
     def collect_spectra_volts(self, points, exposure=20):
         points = np.ascontiguousarray(points)
-        assert points.shape[0] == 2
-        arr = np.random.randn(points.shape[1], 1340) * exposure
+        assert points.shape[1] == 2
+        arr = np.random.randn(points.shape[0], 1340) * exposure
         return np.cumsum(arr, axis=1)
 
 
@@ -125,7 +130,7 @@ class RamanEngine(MDAEngine):
             new_points = source.get_mda_points(event)
             points.append(new_points)
             which.extend([source.name] * len(new_points))
-        points = np.hstack(points)
+        points = np.vstack(points)
 
         p, t = event.index["p"], event.index.get("t", 0)
         logger.info(f"collecting raman: {p=}, {t=}")
@@ -177,7 +182,7 @@ class RamanEngine(MDAEngine):
             points.append(new_points)
             which.extend([source.name] * len(new_points))
 
-        points = np.hstack(points)
+        points = np.vstack(points)
 
         if exposure is None:
             exposure = self._default_rm_exp  # type: ignore
