@@ -14,7 +14,7 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
     """
 
     def rectangle(rect, d_r):
-        rect =  rect[rect[:, 0].argsort()]
+        rect = rect[rect[:, 0].argsort()]
         rect[:2] = rect[:2][rect[:2][:,1].argsort()]
         rect[2:4] = rect[2:4][rect[2:4][:,1].argsort()[::-1]]
 
