@@ -20,10 +20,14 @@ class Transformer(Protocol):
     def transform(self, xy: np.ndarray) -> np.ndarray:
         raise NotImplementedError
 
+    @property
+    def multiplier(self) -> int:
+        return self.transform(np.array([[1, 1]])).shape[0]
+
 
 class Identity(Transformer):
     def transform(self, xy):
-        return xy
+        return np.array(xy)
 
 
 class Crosshair(Transformer):
@@ -59,6 +63,7 @@ class Crosshair(Transformer):
         -------
         xy (N*spacing, 2)
         """
+        xy = np.asanyarray(xy)
         spacing = spacing or self.spacing
         mod = np.array([[-spacing, 0, 0, 0, spacing], [0, spacing, 0, -spacing, 0]]).T
 
@@ -112,6 +117,7 @@ class Square(Transformer):
         -------
         xy (N*N_points**2, 2)
         """
+        xy = np.asanyarray(xy)
         edge_length = edge_length or self.edge_length
         N_points = N_points or self.N_points
 
@@ -172,6 +178,7 @@ class Circle(Transformer):
         xy (N_new, 2)
             In a circle shape.
         """
+        xy = np.asanyarray(xy)
         radius = radius or self.radius
         N = N_on_radius or self.N_on_radius
 
