@@ -144,7 +144,7 @@ class PointsLayerSource(BaseSource):
         points[:, 1] /= self._img_shape[1]
         return self.transformer.transform(points)
 
-    def get_points_mda(self, event: MDAEvent) -> np.ndarray:
+    def get_mda_points(self, event: MDAEvent) -> np.ndarray:
         p = event.index.get("p")
         points = self._get_pos_points(self._points.data, p)
 
