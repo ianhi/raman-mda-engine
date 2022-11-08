@@ -12,6 +12,7 @@ from napari_broadcastable_points import BroadcastablePoints
 from pymmcore_plus import CMMCorePlus
 from useq import MDAEvent
 
+from .transformers import Identity, Transformer
 from .util import brush_laser_focus, polygon_laser_focus
 
 __all__ = [
@@ -57,15 +58,29 @@ class SnappableRamanAimingSource(RamanAimingSource, Protocol):
 
 
 class BaseSource:
-    def __init__(self, name: str = None) -> None:
+    def __init__(self, name: str = None, transformer: Transformer = None) -> None:
         if name is None:
             self._name = str(uuid.uuid1())
         else:
             self._name = name
+        if transformer is None:
+            self.transformer = Identity()
+        else:
+            self.transformer = transformer
 
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def transformer(self) -> Transformer:
+        return self._transformer
+
+    @transformer.setter
+    def transformer(self, val: Transformer):
+        if not isinstance(val, Transformer):
+            raise TypeError("That's not a Transfomer!! grrr")
+        self._transformer = val
 
 
 class SimpleGridSource(BaseSource):
@@ -98,6 +113,7 @@ class PointsLayerSource(BaseSource):
         name: str = None,
         position_idx: int = 1,
         img_shape: tuple[int, int] = None,
+        transformer: Transformer = None,
     ) -> None:
         """
         Parameters
@@ -116,7 +132,7 @@ class PointsLayerSource(BaseSource):
             self._img_shape = img_shape
         if name is None:
             name = f"points-{uuid.uuid1()}"
-        super().__init__(name)
+        super().__init__(name, transformer=transformer)
 
     def _get_pos_points(self, points: np.ndarray, pos: int):
         return points[points[:, self._pos_idx] == pos][:, -2:]
@@ -126,7 +142,7 @@ class PointsLayerSource(BaseSource):
         # put into [0, 1] for spectra collector
         points[:, 0] /= self._img_shape[0]
         points[:, 1] /= self._img_shape[1]
-        return points
+        return self.transformer.transform(points)
 
     def get_points_mda(self, event: MDAEvent) -> np.ndarray:
         p = event.index.get("p")
@@ -135,7 +151,7 @@ class PointsLayerSource(BaseSource):
         # put into [0, 1] for spectra collector
         points[:, 0] /= self._img_shape[0]
         points[:, 1] /= self._img_shape[1]
-        return points
+        return self.transformer.transform(points)
 
 
 class ShapesLayerSource(BaseSource):
