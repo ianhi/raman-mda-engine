@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import time
 from numbers import Real
 from typing import TYPE_CHECKING
 
@@ -230,8 +231,27 @@ class RamanEngine(MDAEngine):
                     if event.channel.config == channel and event.index["z"] == z:
                         self.record_raman(event)
 
-                self._mmc.snapImage()
-                img = self._mmc.getImage()
+                try:
+                    self._mmc.snapImage()
+                    img = self._mmc.getImage()
+                except RuntimeError as e:
+                    if "Error in device" in str(e):
+                        # avoid shutter errors
+                        time.sleep(0.5)
+                        self._mmc.waitForSystem()
+                        try:
+                            self._mmc.snapImage()
+                            img = self._mmc.getImage()
+                        except RuntimeError as e2:
+                            logger.warning(repr(e))
+                            logger.warning(repr(e2))
+                            img = np.zeros(
+                                self._mmc.getImageWidth(),
+                                self._mmc.getImageHeight(),
+                                dtype=getattr(
+                                    np, f"uint{self._mmc.getImageBitDepth()}"
+                                ),
+                            )
 
                 self._events.frameReady.emit(img, event)
         except Exception as e:  # noqa E722
