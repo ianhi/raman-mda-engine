@@ -238,7 +238,6 @@ class RamanEngine(MDAEngine):
                     if "Error in device" in str(e):
                         # avoid shutter errors
                         time.sleep(0.5)
-                        self._mmc.waitForSystem()
                         try:
                             self._mmc.snapImage()
                             img = self._mmc.getImage()
