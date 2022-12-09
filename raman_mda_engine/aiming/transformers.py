@@ -67,7 +67,7 @@ class Crosshair(Transformer):
         spacing = spacing or self.spacing
         mod = np.array([[-spacing, 0, 0, 0, spacing], [0, spacing, 0, -spacing, 0]]).T
 
-        return (xy + mod[:, None, :]).reshape(-1, 2)
+        return (xy + mod[:, None, :]).reshape(-1, 2, order="F")
 
 
 class Square(Transformer):
@@ -125,7 +125,7 @@ class Square(Transformer):
         X, Y = np.meshgrid(edge, edge)
         stacked = np.vstack([X.ravel(), Y.ravel()])
 
-        return (xy + stacked.T[:, None, :]).reshape(-1, 2)
+        return (xy + stacked.T[:, None, :]).reshape(-1, 2, order="F")
 
 
 class Circle(Transformer):
@@ -187,4 +187,4 @@ class Circle(Transformer):
         idx = np.sqrt(X**2 + Y**2) <= radius
         stacked = np.vstack([X[idx].ravel(), Y[idx].ravel()])
 
-        return (xy + stacked.T[:, None, :]).reshape(-1, 2)
+        return (xy + stacked.T[:, None, :]).reshape(-1, 2, order="F")
