@@ -23,7 +23,7 @@ class EventPayload(NamedTuple):
 
 class fakeAcquirer:
     """
-    For development
+    For development.
     """
 
     def collect_spectra_relative(self, points, exposure=20):
@@ -118,7 +118,7 @@ class RamanEngine(MDAEngine):
 
     def record_raman(self, event: MDAEvent):
         """
-        Record and save the raman spectra for the current position and time
+        Record and save the raman spectra for the current position and time.
 
         Parameters
         ----------
@@ -152,7 +152,7 @@ class RamanEngine(MDAEngine):
         | (SnappableRamanAimingSource | list[SnappableRamanAimingSource]) = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Record raman
+        Record raman.
 
         Parameters
         ----------
