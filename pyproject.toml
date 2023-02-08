@@ -1,15 +1,6 @@
 [build-system]
 requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
 
-[tool.isort]
-profile = "black"
-src_paths = "raman_mda_engine"
-multi_line_output = 3
-
-[tool.pydocstyle]
-match_dir = "raman_mda_engine"
-convention = "numpy"
-add_select = ["D402","D415","D417"]
 
 [tool.pytest.ini_options]
 addopts = [
@@ -29,3 +20,32 @@ implicit_reexport = false
 show_column_numbers = true
 show_error_codes = true
 ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+extend-select = [
+    "E",    # style errors
+    "F",    # flakes
+    "D",    # pydocstyle
+    "I",    # isort
+    "UP",   # pyupgrade
+    # "N",  # pep8-naming
+    # "S",  # bandit
+    "C",    # flake8-comprehensions
+    "B",    # flake8-bugbear
+    "A001", # flake8-builtins
+    "RUF",  # ruff-specific rules
+]
+extend-ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D107", # Missing docstring in __init__
+    "D203", # 1 blank line required before class docstring
+    "D212", # Multi-line docstring summary should start at the first line
+    "D213", # Multi-line docstring summary should start at the second line
+    "D400", # First line should end with a period
+    "D413", # Missing blank line after last section
+    "D416", # Section name should end with a colon
+    "C901", # Function is too complex
+]
