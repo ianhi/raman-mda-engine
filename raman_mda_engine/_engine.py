@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import contextlib
-import time
 from numbers import Real
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
 from loguru import logger
@@ -19,9 +17,13 @@ if TYPE_CHECKING:
     from useq import MDASequence
 
 
+class EventPayload(NamedTuple):
+    image: np.ndarray
+
+
 class fakeAcquirer:
     """
-    For development
+    For development.
     """
 
     def collect_spectra_relative(self, points, exposure=20):
@@ -69,6 +71,7 @@ class RamanEngine(MDAEngine):
             from raman_control import SpectraCollector
 
             self._spectra_collector = SpectraCollector.instance()
+        self._rm_meta = None
         self.aiming_sources = sources if sources is not None else []
         self._sources: list[RamanAimingSource]
 
@@ -115,7 +118,7 @@ class RamanEngine(MDAEngine):
 
     def record_raman(self, event: MDAEvent):
         """
-        Record and save the raman spectra for the current position and time
+        Record and save the raman spectra for the current position and time.
 
         Parameters
         ----------
@@ -149,7 +152,7 @@ class RamanEngine(MDAEngine):
         | (SnappableRamanAimingSource | list[SnappableRamanAimingSource]) = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Record raman
+        Record raman.
 
         Parameters
         ----------
@@ -192,72 +195,72 @@ class RamanEngine(MDAEngine):
 
         return spec, points, which
 
-    def run(self, sequence: MDASequence) -> None:
-        """
-        Run the multi-dimensional acquistion defined by `sequence`.
+    def setup_sequence(self, sequence: MDASequence) -> None:
+        super().setup_sequence(sequence)
+        raman_meta = sequence.metadata.get("raman", None)
+        if raman_meta:
+            self._rm_channel = raman_meta.get("channel", "BF")
 
-        Most users should not use this directly as it will block further
-        execution. Instead use ``run_mda`` on CMMCorePlus which will run on
-        a thread.
-
-        Parameters
-        ----------
-        sequence : MDASequence
-            The sequence of events to run.
-        """
-        try:
-            self._prepare_to_run(sequence)
-            raman_meta = sequence.metadata.get("raman", None)
-            if raman_meta:
-                channel = raman_meta.get("channel", "BF")
-                z = raman_meta.get("z", "center")
-                z_index = self._sequence_axis_order(sequence).index("z")
-                if z == "center":
+            z = raman_meta.get("z", "all")
+            z_index = self._sequence_axis_order(sequence).index("z")
+            if isinstance(z, str):
+                if z.lower() == "center":
                     n_z = sequence.shape[z_index]
                     if n_z % 2 == 0:
                         raise ValueError("for z=center n_z must be odd.")
                     z = n_z // 2
+                elif z.lower() in ["all", "stack"]:
+                    z = np.arange(sequence.shape[z_index])
+            else:
+                z = np.asanyarray(z)
 
-            for event in sequence:
-                cancelled = self._wait_until_event(event, sequence)
+            self._rm_z = z
+            self._rm_meta = raman_meta
 
-                # If cancelled break out of the loop
-                if cancelled:
-                    break
+        self._z_rel = sequence.z_plan.positions()
+        if "autofocus" in sequence.metadata:
+            auto_meta = sequence.metadata["autofocus"]
+            self._auto_device = auto_meta["autofocus_device"]
+            self._rel_device = auto_meta["rel_focus_device"]
+        self._last_pos = -1
 
-                logger.info(event)
-                self._prep_hardware(event)
-                if raman_meta:
-                    if event.channel.config == channel and event.index["z"] == z:
-                        self.record_raman(event)
+    def setup_event(self, event: MDAEvent):
+        if event.x_pos is not None or event.y_pos is not None:
+            x = event.x_pos if event.x_pos is not None else self._mmc.getXPosition()
+            y = event.y_pos if event.y_pos is not None else self._mmc.getYPosition()
+            self._mmc.setXYPosition(x, y)
 
-                try:
-                    self._mmc.snapImage()
-                    img = self._mmc.getImage()
-                except RuntimeError as e:
-                    if "Error in device" in str(e):
-                        # avoid shutter errors
-                        time.sleep(0.5)
-                        try:
-                            self._mmc.snapImage()
-                            img = self._mmc.getImage()
-                        except RuntimeError as e2:
-                            logger.warning(repr(e))
-                            logger.warning(repr(e2))
-                            img = np.zeros(
-                                self._mmc.getImageWidth(),
-                                self._mmc.getImageHeight(),
-                                dtype=getattr(
-                                    np, f"uint{self._mmc.getImageBitDepth()}"
-                                ),
-                            )
+        if event.z_pos is not None:
+            if event.index["p"] != self._last_pos:
+                # moved to a new position
+                # figure out what the PFS-Offset was
+                pfs_z = event.z_pos - self._z_rel
+                self._mmc.setPosition(self._auto_device, pfs_z[0])
+                self._mmc.fullFocus()
+                self._ref_z = self._mmc.getPosition(self._rel_device)
+                self._mmc.enableContinuousFocus(False)
+                self._mmc.waitForSystem()
+                self._last_pos = event.index["p"]
+            z_pos = self._ref_z + self._z_rel[event.index["z"]]
+            self._mmc.setPosition(self._rel_device, z_pos)
 
-                self._events.frameReady.emit(img, event)
-        except Exception as e:  # noqa E722
-            # clean up so future MDAs can be run
-            self._canceled = False
-            self._running = False
-            with contextlib.suppress(Exception):
-                self._finish_run(sequence)
-            raise e
-        self._finish_run(sequence)
+        if event.channel is not None:
+            self._mmc.setConfig(event.channel.group, event.channel.config)
+        if event.exposure is not None:
+            self._mmc.setExposure(event.exposure)
+
+        self._mmc.waitForSystem()
+
+    def exec_event(self, event: MDAEvent) -> Any:
+        if self._rm_meta:
+            if (
+                event.channel.config == self._rm_channel
+                and event.index["z"] in self._rm_z
+            ):
+                self.record_raman(event)
+        self._mmc.snapImage()
+        # TODO: need a return object including the raman channel so that
+        # napari-micro can interpret. Currently cannot make raman events
+        # bc they mess with the shape of the acquisition for napari-micro
+        # and it messes up display.
+        return EventPayload(image=self._mmc.getImage())

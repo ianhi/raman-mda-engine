@@ -29,7 +29,7 @@ class RamanAimingSource(Protocol):
     @abstractmethod
     def get_mda_points(self, event: MDAEvent) -> np.ndarray:
         """
-        Generate points to aim the laser for a given MDA event
+        Generate points to aim the laser for a given MDA event.
 
         Parameters
         ----------
@@ -85,7 +85,7 @@ class BaseSource:
 
 class SimpleGridSource(BaseSource):
     """
-    Make a grid to full extent of the Raman FOV
+    Make a grid to full extent of the Raman FOV.
     """
 
     def __init__(self, N_x: int, N_y: int, name: str = None) -> None:
@@ -176,7 +176,6 @@ class ShapesLayerSource(BaseSource):
         spacing: int, default 15
             Number of pixels between points
         """
-
         self._pos_idx = position_idx
         self._shapes = shapes_layer
         self._spacing = spacing
@@ -232,7 +231,7 @@ class ShapesLayerSource(BaseSource):
 
     def get_mda_points(self):
         """
-        TODO : waiting until broadcastable-shapes-exists
+        TODO : waiting until broadcastable-shapes-exists.
         """
         return self.get_current_points()
 
@@ -259,7 +258,6 @@ class LabelsLayerSource(BaseSource):
         spacing: int, default 15
             Number of pixels between points
         """
-
         self._pos_idx = position_idx
         self._labels = labels_layer
         self._spacing = spacing
@@ -306,6 +304,6 @@ class LabelsLayerSource(BaseSource):
 
     def get_mda_points(self):
         """
-        TODO : waiting until broadcastable-labels-exists
+        TODO : waiting until broadcastable-labels-exists.
         """
         return self.get_current_points()

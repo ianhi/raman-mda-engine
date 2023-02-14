@@ -10,7 +10,7 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
     """
     shape_data is the array of points that napari uses to define the shape
     shape_type is the type the napari assigns to the shape
-    density is the pixels per interval between lattice points
+    density is the pixels per interval between lattice points.
     """
 
     def rectangle(rect, d_r):
@@ -115,7 +115,7 @@ def brush_laser_focus(label_data, density, plot=True):
     """
     shape_data is the array of points that napari uses to define the shape
     shape_type is the type the napari assigns to the shape
-    density is the pixels per interval between lattice points
+    density is the pixels per interval between lattice points.
     """
 
     def rectangle(rect, d_r):
