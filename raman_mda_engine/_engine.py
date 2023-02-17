@@ -22,9 +22,7 @@ class EventPayload(NamedTuple):
 
 
 class fakeAcquirer:
-    """
-    For development.
-    """
+    """For development."""
 
     def collect_spectra_relative(self, points, exposure=20):
         points = np.asarray(points)
@@ -53,12 +51,18 @@ class RamanEngine(MDAEngine):
         sources: list[RamanAimingSource] = None,
     ) -> None:
         """
+        A pymmcore-plus mda engine that also collects Raman data.
+
         Parameters
         ----------
-        ...
-        position_idx : int, default 1
-            Which axis is position for the points layers. Can't assume this
-            yet due to the brittleness of broadcastable points
+        mmc : CMMCorePlus
+            The core to use, or None to use the current instance
+        default_rm_exp : float
+            The default raman exposure in ms. Used if nothing else provided.
+        spectra_collector : SpectraCollector instance
+            If None use the default - or nothign if not importable
+        sources : iterable
+            Collection of aiming sources to aim the raman laser.
         """
         super().__init__(mmc)
         self.raman_events = RamanSignaler()
@@ -68,9 +72,16 @@ class RamanEngine(MDAEngine):
         self.raman_events = RamanSignaler()
         self._spectra_collector = spectra_collector
         if self._spectra_collector is None:
-            from raman_control import SpectraCollector
+            try:
+                from raman_control import SpectraCollector
 
-            self._spectra_collector = SpectraCollector.instance()
+                self._spectra_collector = SpectraCollector.instance()
+            except ImportError:
+                self._spectra_collector = None
+                logger.warning(
+                    "Could not import SpectraCollector - No raman collection"
+                )
+
         self._rm_meta = None
         self.aiming_sources = sources if sources is not None else []
         self._sources: list[RamanAimingSource]
@@ -123,6 +134,7 @@ class RamanEngine(MDAEngine):
         Parameters
         ----------
         event : MDAEvent
+            From the mda sequence.
 
         Returns
         -------
@@ -199,6 +211,8 @@ class RamanEngine(MDAEngine):
         super().setup_sequence(sequence)
         raman_meta = sequence.metadata.get("raman", None)
         if raman_meta:
+            if self._spectra_collector is None:
+                raise ValueError("Spectra Collector not set - cannot collect Raman.")
             self._rm_channel = raman_meta.get("channel", "BF")
 
             z = raman_meta.get("z", "all")
