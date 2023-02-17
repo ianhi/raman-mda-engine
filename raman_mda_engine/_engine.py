@@ -9,6 +9,7 @@ from pymmcore_plus import CMMCorePlus
 from pymmcore_plus.mda import MDAEngine
 from useq import MDAEvent
 
+from ._error_handling import slack_notify
 from ._events import QRamanSignaler as RamanSignaler
 from .aiming import RamanAimingSource, SnappableRamanAimingSource
 
@@ -157,6 +158,7 @@ class RamanEngine(MDAEngine):
 
         self.raman_events.ramanSpectraReady.emit(event, spec, points, which)
 
+    @slack_notify
     def snap_raman(
         self,
         exposure: Real = None,
@@ -207,6 +209,7 @@ class RamanEngine(MDAEngine):
 
         return spec, points, which
 
+    @slack_notify
     def setup_sequence(self, sequence: MDASequence) -> None:
         super().setup_sequence(sequence)
         raman_meta = sequence.metadata.get("raman", None)
@@ -238,6 +241,7 @@ class RamanEngine(MDAEngine):
             self._rel_device = auto_meta["rel_focus_device"]
         self._last_pos = -1
 
+    @slack_notify
     def setup_event(self, event: MDAEvent):
         if event.x_pos is not None or event.y_pos is not None:
             x = event.x_pos if event.x_pos is not None else self._mmc.getXPosition()
@@ -265,6 +269,7 @@ class RamanEngine(MDAEngine):
 
         self._mmc.waitForSystem()
 
+    @slack_notify
     def exec_event(self, event: MDAEvent) -> Any:
         if self._rm_meta:
             if (

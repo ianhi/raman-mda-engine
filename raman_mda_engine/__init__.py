@@ -12,7 +12,9 @@ __all__ = [
     "RamanEngine",
     "RamanTiffAndNumpyWriter",
     "fakeAcquirer",
+    "set_webhook_url",
 ]
 
 from ._engine import RamanEngine, fakeAcquirer
+from ._error_handling import set_webhook_url
 from ._writers import RamanTiffAndNumpyWriter
