@@ -1,16 +1,29 @@
 from math import floor
 
-import matplotlib.pyplot as plt
 import numpy as np
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
 
-def polygon_laser_focus(shape_data, shape_type, density, plot=True):
+def polygon_laser_focus(shape_data, shape_type: str, density: int, plot: bool = True):
     """
-    shape_data is the array of points that napari uses to define the shape
-    shape_type is the type the napari assigns to the shape
-    density is the pixels per interval between lattice points.
+    Convert a polygon into points.
+
+    Parameters
+    ----------
+    shape_data : arraylike
+        The array of points that napari uses to define the shape
+    shape_type : str
+        The type the napari assigns to the shape
+    density : int
+        Pixels per interval between lattice points.
+    plot : bool
+        Whether to make a plot showing the generated points
+
+    Returns
+    -------
+    np.array
+        The points the shape has been broken up into.
     """
 
     def rectangle(rect, d_r):
@@ -102,6 +115,8 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
         points = irregular(shape_data, density)
 
     if plot:
+        import matplotlib.pyplot as plt
+
         plt.figure()
         plt.scatter(points.T[0], points.T[1])
         plt.scatter(shape_data.T[0], shape_data.T[1])
@@ -111,11 +126,23 @@ def polygon_laser_focus(shape_data, shape_type, density, plot=True):
     return points
 
 
-def brush_laser_focus(label_data, density, plot=True):
+def brush_laser_focus(label_data, density: int, plot: bool = True):
     """
-    shape_data is the array of points that napari uses to define the shape
-    shape_type is the type the napari assigns to the shape
-    density is the pixels per interval between lattice points.
+    Convert a napari brush layer into points.
+
+    Parameters
+    ----------
+    label_data : arraylike
+        The array of points that napari uses to define the shape
+    density : int
+        Pixels per interval between lattice points.
+    plot : bool
+        Whether to make a plot showing the generated points
+
+    Returns
+    -------
+    np.array
+        The points the shape has been broken up into.
     """
 
     def rectangle(rect, d_r):
@@ -166,6 +193,8 @@ def brush_laser_focus(label_data, density, plot=True):
     ]
 
     if plot:
+        import matplotlib.pyplot as plt
+
         plt.figure()
         plt.imshow(label_data.T)
         plt.scatter(points.T[0], points.T[1])
