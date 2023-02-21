@@ -14,30 +14,46 @@ __all__ = [
 
 @runtime_checkable
 class Transformer(Protocol):
+    """Base class for transformers."""
+
     def __init__(self):
         pass
 
     def transform(self, xy: np.ndarray) -> np.ndarray:
+        """Run xy through the transform.
+
+        Parameters
+        ----------
+        xy : numpy array
+            An (N, 2) array of the points to transform.
+        """
         raise NotImplementedError
 
     @property
     def multiplier(self) -> int:
+        """Multiplier for how much this transformer changes the number of points."""
         return self.transform(np.array([[1, 1]])).shape[0]
 
 
 class Identity(Transformer):
-    def transform(self, xy):
-        return np.array(xy)
+    """Transform without making changes."""
+
+    def transform(self, xy) -> np.ndarray:
+        """Return xy as a numpy array."""
+        return np.asarray(xy)
 
 
 class Crosshair(Transformer):
+    """
+    Transform a point into a crosshair of points.
+
+    Parameters
+    ----------
+    spacing : float
+        Spacing between points in relative coordinates.
+    """
+
     def __init__(self, spacing):
-        """
-        Parameters
-        ----------
-        spacing : float
-            Spacing between points in relative coordinates.
-        """
         super().__init__()
         self._spacing = spacing
 
@@ -52,9 +68,12 @@ class Crosshair(Transformer):
 
     def transform(self, xy, spacing: float = None):
         """
+        Transform the given points into a crosshair.
+
         Parameters
         ----------
         xy : (N, 2) arraylike
+            The points to transform.
         spacing : float, or None
             How far to space the points out.
             If *None* use self.spacing
@@ -71,25 +90,37 @@ class Crosshair(Transformer):
 
 
 class Square(Transformer):
+    """
+    Transformer for point to square of points.
+
+    Parameters
+    ----------
+    edge_length : float
+        Length of the edge.
+    N_points : int
+        Number of points to have per edge.
+    """
+
     def __init__(self, edge_length: float, N_points: int):
-        """
-        Parameters
-        ----------
-        edge_length : float
-            Length of the edge.
-        N_points : int
-            Number of points to have per edge.
-        """
         super().__init__()
         self._edge_length = edge_length
         self._N_points = N_points
 
     @property
     def edge_length(self) -> float:
+        """The edge lenght of the square."""
         return self._edge_length
 
     @edge_length.setter
     def edge_length(self, val: float):
+        """
+        Set the edge length.
+
+        Parameters
+        ----------
+        val : float
+            The new edge length
+        """
         self._edge_length = val
 
     @property
@@ -108,6 +139,7 @@ class Square(Transformer):
         Parameters
         ----------
         xy : (N, 2) arraylike
+            The points to transform.
         edge_length : float, optional
             Length of the edge. If *None* use self.spacing
         N_points : int, optional
@@ -129,16 +161,19 @@ class Square(Transformer):
 
 
 class Circle(Transformer):
+    """
+    Transform from a point to circle of points.
+
+    Parameters
+    ----------
+    radius : float
+        Radius of the circle in relative coordinates
+    N_on_radius : int
+        Number of points to have from the center point (maybe inclusive)
+        to the edge (inclusive)
+    """
+
     def __init__(self, radius: float, N_on_radius: int):
-        """
-        Parameters
-        ----------
-        radius : float
-            Radius of the circle in relative coordinates
-        N_on_radius : int
-            Number of points to have from the center point (maybe inclusive)
-            to the edge (inclusive)
-        """
         super().__init__()
         self._radius = radius
         self._N_on_radius = N_on_radius
@@ -167,6 +202,7 @@ class Circle(Transformer):
         Parameters
         ----------
         xy : (N, 2) arraylike
+            The points to transform.
         radius : float, optional
             Radius of the circle in relative coordinates. If *None*, use self.radius
         N_on_radius : int, optional

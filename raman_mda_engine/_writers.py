@@ -22,10 +22,7 @@ __all__ = [
 
 
 class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
-    """
-    Base acquirer. Implements the saving logic and interactions with MDA.
-    Leaves actual laser control to a subclass to make this easier to develop.
-    """
+    """Writer to save both images and Raman Spectra."""
 
     def __init__(
         self,
