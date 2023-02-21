@@ -225,7 +225,7 @@ class RamanEngine(MDAEngine):
                     n_z = sequence.shape[z_index]
                     if n_z % 2 == 0:
                         raise ValueError("for z=center n_z must be odd.")
-                    z = n_z // 2
+                    z = np.array(n_z // 2)
                 elif z.lower() in ["all", "stack"]:
                     z = np.arange(sequence.shape[z_index])
             else:
