@@ -38,3 +38,6 @@ def test_mda_no_autofocus(core: CMMCorePlus, engine: RamanEngine):
     engine.aiming_sources = []
     with pytest.raises(RuntimeError, match="No aiming sources - cannot collect Raman."):
         core.mda.run(seq)
+
+
+# TODO: test with autofocus!!
