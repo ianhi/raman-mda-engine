@@ -242,28 +242,43 @@ class RamanEngine(MDAEngine):
         self._last_pos = -1
 
     @slack_notify
-    def setup_event(self, event: MDAEvent):
+    def setup_event(self, event: MDAEvent) -> None:
         if event.x_pos is not None or event.y_pos is not None:
             x = event.x_pos if event.x_pos is not None else self._mmc.getXPosition()
             y = event.y_pos if event.y_pos is not None else self._mmc.getYPosition()
             self._mmc.setXYPosition(x, y)
-
-        if event.z_pos is not None:
-            if event.index["p"] != self._last_pos:
-                # moved to a new position
-                # figure out what the PFS-Offset was
-                pfs_z = event.z_pos - self._z_rel
-                self._mmc.setPosition(self._auto_device, pfs_z[0])
-                self._mmc.fullFocus()
-                self._ref_z = self._mmc.getPosition(self._rel_device)
-                self._mmc.enableContinuousFocus(False)
-                self._mmc.waitForSystem()
-                self._last_pos = event.index["p"]
-            z_pos = self._ref_z + self._z_rel[event.index["z"]]
-            self._mmc.setPosition(self._rel_device, z_pos)
-
         if event.channel is not None:
             self._mmc.setConfig(event.channel.group, event.channel.config)
+
+        def autofocus(pos: int):
+            # set to the last known good z for this position
+            # to give ourselves the best shot of PFS working
+            if pos in self._ref_z:
+                self._mmc.setPosition(self._rel_device, self._ref_z[pos])
+            self._mmc.waitForSystem()
+
+            # compute new focus
+            pfs_z = event.z_pos - self._z_rel
+            self._mmc.setPosition(self._auto_device, pfs_z[0])
+            self._mmc.fullFocus()
+            self._ref_z[pos] = self._mmc.getPosition(self._rel_device)
+            self._mmc.enableContinuousFocus(False)
+            self._mmc.waitForSystem()
+
+        if event.z_pos is not None:
+            pos = event.index["p"]
+            if pos != self._last_pos:
+                self._last_pos = pos
+                # moved to a new position
+                # figure out what the PFS-Offset was
+                try:
+                    autofocus(pos)
+                except RuntimeError:
+                    autofocus(pos)
+            # FIXME: work in case of no autofocus
+            z_pos = self._ref_z[pos] + self._z_rel[event.index["z"]]
+            self._mmc.setPosition(self._rel_device, z_pos)
+
         if event.exposure is not None:
             self._mmc.setExposure(event.exposure)
 
