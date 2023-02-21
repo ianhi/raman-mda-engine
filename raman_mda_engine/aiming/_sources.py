@@ -34,6 +34,7 @@ class RamanAimingSource(Protocol):
         Parameters
         ----------
         event : useq.MDAEvent
+            The event to use to get the current position.
 
         Returns
         -------
@@ -50,6 +51,8 @@ class SnappableRamanAimingSource(RamanAimingSource, Protocol):
     @abstractmethod
     def get_current_points(self) -> np.ndarray:
         """
+        Get the coordinates as currently displayed on the viewer.
+
         Returns
         -------
         relative_coords : (N, 2) array
@@ -84,9 +87,7 @@ class BaseSource:
 
 
 class SimpleGridSource(BaseSource):
-    """
-    Make a grid to full extent of the Raman FOV.
-    """
+    """Make a grid to full extent of the Raman FOV."""
 
     def __init__(self, N_x: int, N_y: int, name: str = None) -> None:
         self.N_x = N_x
@@ -100,6 +101,14 @@ class SimpleGridSource(BaseSource):
         super().__init__(name)
 
     def get_current_points(self):
+        """
+        Get the coordinates as currently displayed on the viewer.
+
+        Returns
+        -------
+        relative_coords : (N, 2) array
+            Positions to aim the laser in relative coordinates [0, 1]
+        """
         return self._grid
 
     def get_mda_points(self, event: MDAEvent = None) -> np.ndarray:
@@ -116,12 +125,21 @@ class PointsLayerSource(BaseSource):
         transformer: Transformer = None,
     ) -> None:
         """
+        A Source based on napari points layer.
+
         Parameters
         ----------
-        ...
+        points_layer : BroadcastablePoints
+            The napari broadcastable points layer to use.
+        name : str, optional
+            Name of the source.
         position_idx : int, default 1
             Which axis is position for the points layers. Can't assume this
             yet due to the brittleness of broadcastable points
+        img_shape : tuple(int, int), optional
+            The shape of the BF images
+        transformer : Transformer, optional
+            Transformer to use when giving points for a snap or mda.
         """
         self._pos_idx = position_idx
         self._points = points_layer
@@ -164,15 +182,18 @@ class ShapesLayerSource(BaseSource):
         spacing: int = 15,
     ) -> None:
         """
+        A Source based on napari shapes layer.
+
         Parameters
         ----------
-        ...
         shapes_layer : napari.layer.Shapes
+            The napari shapes points layer to use.
         name : str, optional
-            if *None* then shapes-[uid]
+            Name of the source.
         position_idx : int, default 1
-            Unused
-        img_shape : (int, int), optional
+            Currently unused
+        img_shape : tuple(int, int), optional
+            The shape of the BF images
         spacing: int, default 15
             Number of pixels between points
         """
@@ -201,10 +222,17 @@ class ShapesLayerSource(BaseSource):
 
     def get_current_points(self, spacing: int = None) -> np.ndarray:
         """
+        Get the coordinates as currently displayed on the viewer.
+
         Parameters
         ----------
         spacing : int, optional
-            THe spacing between points in pixels. If *None* default to self.spacing
+            The spacing between points in pixels. If *None* default to self.spacing
+
+        Returns
+        -------
+        relative_coords : (N, 2) array
+            Positions to aim the laser in relative coordinates [0, 1]
         """
         spacing = spacing or self._spacing
 
@@ -229,11 +257,10 @@ class ShapesLayerSource(BaseSource):
 
         return np.vstack(all_points)
 
-    def get_mda_points(self):
-        """
-        TODO : waiting until broadcastable-shapes-exists.
-        """
-        return self.get_current_points()
+        # def get_mda_points(self):
+        # TODO : waiting until broadcastable-shapes-exists.
+        raise NotImplementedError
+        # return self.get_current_points()
 
 
 class LabelsLayerSource(BaseSource):
@@ -246,15 +273,18 @@ class LabelsLayerSource(BaseSource):
         spacing: int = 15,
     ) -> None:
         """
+        A Source based on napari labels layer.
+
         Parameters
         ----------
-        ...
         labels_layer : napari.layer.Labels
+            The napari labels points layer to use.
         name : str, optional
-            if *None* then shapes-[uid]
+            Name of the source.
         position_idx : int, default 1
-            Unused
-        img_shape : (int, int), optional
+            Currently unused
+        img_shape : tuple(int, int), optional
+            The shape of the BF images
         spacing: int, default 15
             Number of pixels between points
         """
@@ -283,10 +313,12 @@ class LabelsLayerSource(BaseSource):
 
     def get_current_points(self, spacing: int = None) -> np.ndarray:
         """
-        Parameters
-        ----------
-        spacing : int, optional
-            THe spacing between points in pixels. If *None* default to self.spacing
+        Get the coordinates as currently displayed on the viewer.
+
+        Returns
+        -------
+        relative_coords : (N, 2) array
+            Positions to aim the laser in relative coordinates [0, 1]
         """
         spacing = spacing or self._spacing
 
@@ -302,8 +334,8 @@ class LabelsLayerSource(BaseSource):
 
         return np.vstack(points)
 
-    def get_mda_points(self):
-        """
-        TODO : waiting until broadcastable-labels-exists.
-        """
-        return self.get_current_points()
+    # def get_mda_points(self):
+    #     """
+    #     TODO : waiting until broadcastable-labels-exists.
+    #     """
+    #     return self.get_current_points()
