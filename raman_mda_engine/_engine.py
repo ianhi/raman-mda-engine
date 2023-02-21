@@ -215,7 +215,9 @@ class RamanEngine(MDAEngine):
         raman_meta = sequence.metadata.get("raman", None)
         if raman_meta:
             if self._spectra_collector is None:
-                raise ValueError("Spectra Collector not set - cannot collect Raman.")
+                raise RuntimeError("Spectra Collector not set - cannot collect Raman.")
+            if len(self.aiming_sources) == 0:
+                raise RuntimeError("No aiming sources - cannot collect Raman.")
             self._rm_channel = raman_meta.get("channel", "BF")
 
             z = raman_meta.get("z", "all")
