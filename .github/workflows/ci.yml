@@ -1,41 +1,51 @@
-name: CI
+name: tests
 
 on:
   push:
     branches:
-      - master
       - main
-  pull_request: {}
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+  pull_request:
+    branches:
+      - main
+  schedule:
+     - cron: "0 16 * * 1" # monday at noon est
   workflow_dispatch:
 
 jobs:
   test:
-    name: ${{ matrix.platform }} (${{ matrix.python-version }})
+    name: ${{ matrix.platform }} py${{ matrix.python-version }}
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.8, 3.9, 3.10]
-        platform: [ubuntu-latest, macos-latest, windows-latest]
+        platform: [windows-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11']
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.11.0
+        with:
+          access_token: ${{ github.token }}
+
+      - uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools tox tox-gh-actions
+          pip install -e .[testing]
 
-      - name: Test with tox
-        run: tox
-        env:
-          PLATFORM: ${{ matrix.platform }}
+      - name: Install Micro-Manager
+        run: mmcore install
+
+      - name: Test
+        run: pytest -v --color=yes --cov=raman_mda_engine --cov-report=xml
 
       - name: Coverage
-        if: runner.os == 'Linux'
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
