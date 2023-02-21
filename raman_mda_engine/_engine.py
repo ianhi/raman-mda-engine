@@ -279,9 +279,9 @@ class RamanEngine(MDAEngine):
                     # moved to a new position
                     # figure out what the PFS-Offset was
                     try:
-                        self.autofocus(event, pos)
+                        self._run_autofocus(event, pos)
                     except RuntimeError:
-                        self.autofocus(event, pos)
+                        self._run_autofocus(event, pos)
                 z_pos = self._ref_z[pos] + self._z_rel[event.index["z"]]
                 self._mmc.setPosition(self._rel_device, z_pos)
             else:
