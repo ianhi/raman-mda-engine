@@ -242,6 +242,7 @@ class RamanEngine(MDAEngine):
             self._autofocus = True
             self._auto_device = auto_meta["autofocus_device"]
             self._rel_device = auto_meta["rel_focus_device"]
+            self._ref_z = {}
         else:
             self._autofocus = False
 
