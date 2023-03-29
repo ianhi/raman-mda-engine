@@ -52,7 +52,7 @@ class RamanEngine(MDAEngine):
         sources: list[RamanAimingSource] = None,
     ) -> None:
         """
-        A pymmcore-plus mda engine that also collects Raman data.
+        Create a pymmcore-plus mda engine that also collects Raman data.
 
         Parameters
         ----------
@@ -253,12 +253,24 @@ class RamanEngine(MDAEngine):
         # to give ourselves the best shot of PFS working
         if pos in self._ref_z:
             self._mmc.setPosition(self._rel_device, self._ref_z[pos])
+        elif (pos - 1) in self._ref_z:
+            # nothing found here yet, use the previous position as
+            # guessed starting point
+            self._mmc.setPosition(self._rel_device, self._ref_z[pos - 1])
         self._mmc.waitForSystem()
 
         # compute new focus
-        pfs_z = event.z_pos - self._z_rel
+        self._mmc.enableContinuousFocus(False)
+        pfs_z = np.array(event.z_pos - self._z_rel)
         self._mmc.setPosition(self._auto_device, pfs_z[0])
-        self._mmc.fullFocus()
+        try:
+            self._mmc.fullFocus()
+        except RuntimeError:
+            try:
+                self._mmc.fullFocus()
+            except RuntimeError:
+                self._mmc.fullFocus()
+        self._mmc.waitForSystem()
         self._ref_z[pos] = self._mmc.getPosition(self._rel_device)
         self._mmc.enableContinuousFocus(False)
         self._mmc.waitForSystem()
@@ -279,10 +291,7 @@ class RamanEngine(MDAEngine):
                     self._last_pos = pos
                     # moved to a new position
                     # figure out what the PFS-Offset was
-                    try:
-                        self._run_autofocus(event, pos)
-                    except RuntimeError:
-                        self._run_autofocus(event, pos)
+                    self._run_autofocus(event, pos)
                 z_pos = self._ref_z[pos] + self._z_rel[event.index["z"]]
                 self._mmc.setPosition(self._rel_device, z_pos)
             else:
