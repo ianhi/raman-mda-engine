@@ -194,6 +194,7 @@ class Circle(Transformer):
     def N_on_radius(self, val: int):
         if not isinstance(val, numbers.Integral) or val <= 0:
             raise TypeError("N_on_radius must be a positive integer")
+        self._N_on_radius = val
 
     def transform(self, xy, radius: float = None, N_on_radius: int = None):
         """
