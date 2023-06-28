@@ -31,10 +31,12 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
     ):
         super().__init__(save_dir, core)
         if isinstance(self._core.mda, RamanEngine):
-            self._core.mda.raman_events.ramanSpectraReady.connect(self._save_raman)
+            self._core.mda.engine.raman_events.ramanSpectraReady.connect(
+                self._save_raman
+            )
 
     def _on_mda_engine_registered(self, newEngine: PMDAEngine, oldEngine: PMDAEngine):
-        super()._on_mda_engine_registered(newEngine, oldEngine)
+        # super()._on_mda_engine_registered(newEngine, oldEngine)
         if isinstance(oldEngine, RamanEngine):
             oldEngine.raman_events.ramanSpectraReady.disconnect(self._save_raman)
         if isinstance(newEngine, RamanEngine):
