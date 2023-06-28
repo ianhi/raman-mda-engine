@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from numbers import Real
 from typing import TYPE_CHECKING, Any, NamedTuple
 
@@ -249,6 +250,12 @@ class RamanEngine(MDAEngine):
         self._last_pos = -1
 
     def _run_autofocus(self, event: MDAEvent, pos: int):
+        if (self._spectra_collector is not None) and (
+            type(self._spectra_collector) is not fakeAcquirer
+        ):
+            # we're at MIT and should insert the filter
+            self._spectra_collector.daq.insert_filter()
+            time.sleep(4)
         # set to the last known good z for this position
         # to give ourselves the best shot of PFS working
         if pos in self._ref_z:
@@ -273,6 +280,14 @@ class RamanEngine(MDAEngine):
         self._mmc.waitForSystem()
         self._ref_z[pos] = self._mmc.getPosition(self._rel_device)
         self._mmc.enableContinuousFocus(False)
+        # put before the wait for system, so that these independent
+        # parts can run at the same time.
+        if (self._spectra_collector is not None) and (
+            type(self._spectra_collector) is not fakeAcquirer
+        ):
+            # we're at MIT and should insert the filter
+            self._spectra_collector.daq.remove_filter()
+            time.sleep(4)
         self._mmc.waitForSystem()
 
     @slack_notify
