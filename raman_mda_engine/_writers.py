@@ -30,7 +30,7 @@ class RamanTiffAndNumpyWriter(SimpleMultiFileTiffWriter):
         core: CMMCorePlus = None,
     ):
         super().__init__(save_dir, core)
-        if isinstance(self._core.mda, RamanEngine):
+        if isinstance(self._core.mda.engine, RamanEngine):
             self._core.mda.engine.raman_events.ramanSpectraReady.connect(
                 self._save_raman
             )
