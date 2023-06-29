@@ -270,6 +270,7 @@ class RamanEngine(MDAEngine):
         self._mmc.enableContinuousFocus(False)
         pfs_z = np.array(event.z_pos - self._z_rel)
         self._mmc.setPosition(self._auto_device, pfs_z[0])
+        self._mmc.waitForSystem()
         try:
             self._mmc.fullFocus()
         except RuntimeError:
@@ -325,7 +326,12 @@ class RamanEngine(MDAEngine):
                 and event.index["z"] in self._rm_z
             ):
                 self.record_raman(event)
-        self._mmc.snapImage()
+        try:
+            self._mmc.snapImage()
+        except RuntimeError:
+            time.sleep(0.5)
+            self._mmc.waitForSystem()
+            self._mmc.snapImage()
         # TODO: need a return object including the raman channel so that
         # napari-micro can interpret. Currently cannot make raman events
         # bc they mess with the shape of the acquisition for napari-micro
