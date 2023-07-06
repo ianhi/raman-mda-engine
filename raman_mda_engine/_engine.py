@@ -273,12 +273,14 @@ class RamanEngine(MDAEngine):
         self._mmc.waitForSystem()
         try:
             self._mmc.fullFocus()
+            self._mmc.waitForSystem()
         except RuntimeError:
             try:
                 self._mmc.fullFocus()
+                self._mmc.waitForSystem()
             except RuntimeError:
                 self._mmc.fullFocus()
-        self._mmc.waitForSystem()
+                self._mmc.waitForSystem()
         self._ref_z[pos] = self._mmc.getPosition(self._rel_device)
         self._mmc.enableContinuousFocus(False)
         # put before the wait for system, so that these independent
