@@ -223,4 +223,4 @@ def linkcode_resolve(domain, info):
 
     fn = os.path.relpath(fn, start=os.path.dirname("../raman_mda_engine"))
 
-    return f"https://github.com/ianhi/raman-mda-engine/blob/main/raman_mda_engine/{fn}{linespec}"  # noqa
+    return f"https://github.com/ianhi/raman-mda-engine/blob/main/raman_mda_engine/{fn}{linespec}"
