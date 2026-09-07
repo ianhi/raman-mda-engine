@@ -163,8 +163,9 @@ class RamanEngine(MDAEngine):
     def snap_raman(
         self,
         exposure: Real = None,
-        aiming_sources: None
-        | (SnappableRamanAimingSource | list[SnappableRamanAimingSource]) = None,
+        aiming_sources: None | (
+            SnappableRamanAimingSource | list[SnappableRamanAimingSource]
+        ) = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Record raman.
