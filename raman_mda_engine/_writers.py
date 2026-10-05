@@ -10,7 +10,6 @@ from useq import MDAEvent
 from ._engine import RamanEngine
 
 if TYPE_CHECKING:
-    pass
 
     from pymmcore_plus import CMMCorePlus
     from pymmcore_plus.mda import PMDAEngine

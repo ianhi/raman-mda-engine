@@ -16,11 +16,11 @@ from .transformers import Identity, Transformer
 from .util import brush_laser_focus, polygon_laser_focus
 
 __all__ = [
-    "SnappableRamanAimingSource",
-    "RamanAimingSource",
-    "SimpleGridSource",
     "PointsLayerSource",
+    "RamanAimingSource",
     "ShapesLayerSource",
+    "SimpleGridSource",
+    "SnappableRamanAimingSource",
 ]
 
 
