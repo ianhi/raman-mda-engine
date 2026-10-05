@@ -8,10 +8,10 @@ from ._sources import (
 )
 
 __all__ = [
-    "SnappableRamanAimingSource",
-    "RamanAimingSource",
-    "SimpleGridSource",
-    "PointsLayerSource",
-    "ShapesLayerSource",
     "LabelsLayerSource",
+    "PointsLayerSource",
+    "RamanAimingSource",
+    "ShapesLayerSource",
+    "SimpleGridSource",
+    "SnappableRamanAimingSource",
 ]

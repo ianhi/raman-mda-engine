@@ -4,11 +4,11 @@ from typing import Protocol, runtime_checkable
 import numpy as np
 
 __all__ = [
-    "Transformer",
-    "Identity",
-    "Crosshair",
-    "Square",
     "Circle",
+    "Crosshair",
+    "Identity",
+    "Square",
+    "Transformer",
 ]
 
 

@@ -8,8 +8,8 @@ from qtpy.QtCore import QObject, Signal
 from useq import MDAEvent
 
 __all__ = [
-    "RamanSignaler",
     "QRamanSignaler",
+    "RamanSignaler",
 ]
 
 
