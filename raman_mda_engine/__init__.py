@@ -6,11 +6,11 @@ __author__ = "Ian Hunt-Isaak"
 __email__ = "ianhuntisaak@gmail.com"
 
 __all__ = [
-    "__version__",
-    "__author__",
-    "__email__",
     "RamanEngine",
     "RamanTiffAndNumpyWriter",
+    "__author__",
+    "__email__",
+    "__version__",
     "fakeAcquirer",
     "set_webhook_url",
 ]
